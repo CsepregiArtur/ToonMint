@@ -1,0 +1,47 @@
+spring:
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/toonmint}
+    username: ${DB_USERNAME:toonmint}
+    password: ${DB_PASSWORD:toonmint}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 10
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      timeout: 2s
+  mail:
+    host: ${MAIL_HOST:smtp.gmail.com}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME}
+    password: ${MAIL_PASSWORD}
+    properties:
+      mail.smtp.auth: true
+      mail.smtp.starttls.enable: true
+      mail.smtp.starttls.required: true
+      mail.smtp.connectiontimeout: 5000
+      mail.smtp.timeout: 5000
+      mail.smtp.writetimeout: 5000
+
+app:
+  jwt:
+    secret: ${JWT_SECRET}
+  rate-limit:
+    backend: ${RATE_LIMIT_BACKEND:redis}
+  temp-store:
+    backend: ${TEMP_STORE_BACKEND:redis}
+
+management:
+  health:
+    # Pune REDIS_HEALTH_ENABLED=false dacă rulezi o singură instanță fără Redis
+    # (rate limit și cache trec automat pe implementările din memorie).
+    redis:
+      enabled: ${REDIS_HEALTH_ENABLED:true}
+    mail:
+      enabled: ${MAIL_ENABLED:false}
+
+logging:
+  level:
+    com.toonmint: INFO
