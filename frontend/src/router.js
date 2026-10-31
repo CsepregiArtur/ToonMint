@@ -6,6 +6,7 @@ import CreditsView from './views/CreditsView.vue'
 import AdminView from './views/AdminView.vue'
 import AccountView from './views/AccountView.vue'
 import LegalView from './views/LegalView.vue'
+import NotFoundView from './views/NotFoundView.vue'
 import { useAuthStore } from './stores/auth'
 
 // Rutele aplicației. Prima pagină este publică (demonstrație + generare gratuită),
@@ -25,7 +26,15 @@ const routes = [
   { path: '/studio', name: 'studio', component: StudioView },
   { path: '/credits', name: 'credits', component: CreditsView },
   { path: '/cont', name: 'account', component: AccountView },
-  { path: '/admin', name: 'admin', component: AdminView, meta: { admin: true } }
+  { path: '/admin', name: 'admin', component: AdminView, meta: { admin: true } },
+  // Orice altă adresă primește pagina 404, nu un redirect la login: altfel un
+  // link greșit pare „pagină există dar cere cont” și motoarele indexează soft-404.
+  {
+    path: '/:pathMatch(.*)*',
+    name: 'not-found',
+    component: NotFoundView,
+    meta: { public: true }
+  }
 ]
 
 const router = createRouter({

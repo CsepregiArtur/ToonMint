@@ -99,9 +99,14 @@ public class AuthService {
 
     /**
      * Verifică emailul și parola, apoi emite un token JWT doar pentru conturile confirmate.
+     *
+     * <p>Limitarea se face pe două chei: IP-ul oprește un singur host care încearcă
+     * multe parole, iar emailul oprește un atac distribuit pe același cont.
      */
     @Transactional(readOnly = true)
-    public AuthResponse login(LoginRequest request) {
+    public AuthResponse login(LoginRequest request, String clientIp) {
+        rateLimitService.check("login-ip:" + ipKey(clientIp));
+        rateLimitService.check("login-email:" + normalizeEmail(request.email()));
         User user = userRepository.findByEmailIgnoreCase(request.email().trim())
                 .orElseThrow(AuthService::invalidCredentials);
         if (!passwordEncoder.matches(request.password(), user.getPasswordHash())) {

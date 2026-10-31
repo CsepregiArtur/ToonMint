@@ -9,16 +9,19 @@
 
 ## Verdict
 
-> **NU este încă „ready for launch".**
-> Aplicația funcționează, dar există **1 blocker de securitate** și **5 probleme majore**
-> care trebuie rezolvate înainte de trafic real.
+> **Audit inițial: NU era „ready for launch".**
+> Un blocker de securitate + 5 probleme majore.
+>
+> **După remediere (secțiunea 9):** toate problemele de **cod** sunt rezolvate și testate.
+> Rămân **3 acțiuni de infrastructură** care nu pot fi făcute din repo
+> (header-e nginx, HSTS/Cloudflare, WAF) și **testul E2E** cu cont real.
 
-| Categorie | Număr |
-|---|---|
-| 🔴 Blocker | 1 |
-| 🟠 Major | 5 |
-| 🟡 Minor | 6 |
-| ⏳ Netestate (necesită cont/plată) | 6 |
+| Categorie | Inițial | După remediere |
+|---|---|---|
+| 🔴 Blocker | 1 | **0** ✅ |
+| 🟠 Major | 5 | 2 (ambele pe server, nu în cod) |
+| 🟡 Minor | 6 | 4 |
+| ⏳ Netestate (necesită cont/plată) | 6 | 6 |
 
 ---
 
@@ -130,12 +133,12 @@ Fără `Strict-Transport-Security`, prima cerere poate fi interceptată (SSL-str
 |---|---|---|
 | `<title>` | `ToonMint — photo to cartoon` | ✅ |
 | `<link rel="icon">` | `/toonmint-mark.svg` (+ apple-touch-icon) | ✅ |
-| `<meta name="description">` | **lipsește** | 🟠 |
-| Open Graph (`og:title`, `og:image`, `og:description`) | **lipsesc** | 🟠 |
-| `robots.txt` | returnează **HTML** (index.html), nu text | 🟠 |
-| `sitemap.xml` | returnează **HTML** (index.html) | 🟠 |
-| Rută 404 (SPA) | **nu există** — URL necunoscut → redirect la `/login` | 🟠 |
-| `lang="ro"` în `index.html` | conținutul implicit poate fi EN pentru vizitatori străini | 🟡 |
+| `<meta name="description">` | există în `index.html` (RO) | ✅ |
+| Open Graph (`og:title`, `og:image`, `og:description`) | **lipseau** → adăugate | ✅ (după fix) |
+| `robots.txt` | returna **HTML** (index.html) → fișier real adăugat | ✅ (după fix) |
+| `sitemap.xml` | returna **HTML** (index.html) → fișier real adăugat | ✅ (după fix) |
+| Rută 404 (SPA) | **nu exista** — URL necunoscut → redirect la `/login` | ✅ (după fix) |
+| `lang="ro"` în `index.html` | `setLocale()` actualizează `<html lang>` la runtime | ✅ |
 
 ### 🟠 M3. `robots.txt` și `sitemap.xml` returnează HTML
 
@@ -165,13 +168,15 @@ indexate de motoare.
 
 **Fix:** adaugă `{ path: '/:pathMatch(.*)*', name: 'not-found', component: NotFoundView, meta: { public: true } }`.
 
-### 🟠 M5. Lipsesc meta description și Open Graph
+### 🟠 M5. Lipsesc meta Open Graph
 
-Fără `description` și `og:*`, share-urile pe social/WhatsApp arată fără imagine și fără text,
-iar Google afișează un snippet generat arbitrar.
+`index.html` avea `description` (RO), dar **niciun tag `og:*` / `twitter:*`**. Fără ele,
+share-urile pe social/WhatsApp apar fără imagine și fără titlu, iar Google afișează un
+snippet generat arbitrar.
 
-**Fix:** în `frontend/index.html` adaugă `description`, `og:title`, `og:description`,
-`og:image` (poate fi `toonmint-logo-wordmark.png` sau un `demo/after.jpg`), `twitter:card`.
+**Fix aplicat:** `og:type`, `og:site_name`, `og:url`, `og:title`, `og:description`,
+`og:image` (1200×630 generat), `og:image:width/height/alt`, `og:locale`, `twitter:card`,
+plus `canonical` și `apple-touch-icon` 180×180.
 
 ---
 
@@ -289,3 +294,56 @@ Dacă lansarea presupune monetizare prin AdSense sau măsurare, trebuie setate *
 
 După 1–6, aplicația poate fi considerată **ready for launch** din perspectiva tehnică,
 cu condiția finalizării testului E2E de la punctul 8.
+
+---
+
+## 9. Remediere aplicată (2026-10-31)
+
+### ✅ Rezolvate în cod
+
+| # | Problemă | Fix | Verificare |
+|---|---|---|---|
+| B1 | Login fără rate limiting | `AuthService.login(request, clientIp)` apelează `rateLimitService.check("login-ip:…")` și `check("login-email:…")`; `AuthController` trimite `ClientIp` | `LoginRateLimitTest` (limit=2 → al 3-lea login = 429) |
+| M3 | `robots.txt` / `sitemap.xml` inexistente | `frontend/public/robots.txt` + `sitemap.xml` (5 URL-uri publice) | prezente în `dist/` |
+| M4 | Fără pagină 404 | `NotFoundView.vue` + rută catch-all `/:pathMatch(.*)*` cu `meta.public` | build OK |
+| M5 | Fără Open Graph | `og:*` + `twitter:*` + `canonical` + `og-image.png` 1200×630 în `index.html` | prezente în `dist/index.html` |
+| m-favicon | `/favicon.ico` returna HTML | `frontend/public/favicon.ico` real (16/32/48 px) + `apple-touch-icon.png` 180 px | fișiere în `dist/` |
+
+**Teste:** `mvn test` → **67 teste, 0 eșecuri** (era 66). Frontend: `vite build` OK.
+
+### ⚠️ Rămân de făcut pe server (în afara repo-ului)
+
+| # | Problemă | Unde | Cum |
+|---|---|---|---|
+| M1 | Header-e de securitate pe HTML | `nginx` | vezi snippet mai jos |
+| M2 | HSTS | Cloudflare | SSL/TLS → Edge Certificates → **Enable HSTS** (6 luni) |
+| — | Blocaj bot pe `/api/*` | Cloudflare | WAF → Skip pe `starts_with(http.request.uri.path, "/api/")` |
+
+Snippet `nginx` pentru `location /` (partea de SPA):
+
+```nginx
+location / {
+    try_files $uri $uri/ /index.html;
+
+    add_header X-Frame-Options "DENY" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+    add_header Permissions-Policy "camera=(), microphone=(), geolocation=()" always;
+    # Pornește în Report-Only o săptămână, apoi scoate -Report-Only.
+    add_header Content-Security-Policy-Report-Only "default-src 'self'; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; connect-src 'self'; frame-ancestors 'none'" always;
+}
+```
+
+### 🟡 Acceptate conștient (nu blochează lansarea)
+
+| Problemă | Motivație |
+|---|---|
+| `/api/nonexistent` → `401` | `anyRequest().authenticated()` filtrează înainte de rutare; a returna 404 ar cere restructurarea lanțului de securitate, fără beneficiu de securitate |
+| `/api/public/trial/eligibility` permite enumerare email | impact minim (răspuns binar), cost de schimbare a contractului API |
+| `www.` nu rezolvă | domeniul canonic e fără `www`, consecvent în tot site-ul |
+| GTM/GA4/AdSense neconfigurate | intenționat: `VITE_*` sunt goale până la lansare |
+
+### 🔴 Rămâne obligatoriu înainte de trafic real
+
+**Testul E2E complet**, care nu poate fi automatizat fără cost și cont real:
+`register → cod email → login → upload poză → generare → download → cumpărare card 4242 → credite în DB`.

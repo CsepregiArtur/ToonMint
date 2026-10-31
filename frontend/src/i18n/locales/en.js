@@ -5,6 +5,12 @@ export default {
   'common.close': 'Close',
   'common.back': 'Back',
 
+  'notFound.title': 'This page does not exist',
+  'notFound.subtitle':
+    'The link may be broken or the page may have moved. Your credits and account are safe.',
+  'notFound.home': 'Back to home',
+  'notFound.back': 'Go back',
+
   'nav.studio': 'Studio',
   'nav.credits': 'Credits',
   'nav.account': 'Account',

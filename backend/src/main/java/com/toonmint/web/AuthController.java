@@ -91,7 +91,7 @@ public class AuthController {
      */
     @PostMapping("/login")
     @Operation(summary = "Exchange credentials for a JWT")
-    public AuthResponse login(@Valid @RequestBody LoginRequest request) {
-        return authService.login(request);
+    public AuthResponse login(@Valid @RequestBody LoginRequest request, HttpServletRequest httpRequest) {
+        return authService.login(request, ClientIp.of(httpRequest));
     }
 }

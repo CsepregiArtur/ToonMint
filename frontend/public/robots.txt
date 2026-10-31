@@ -1,0 +1,12 @@
+User-agent: *
+Allow: /
+
+# Zona privată nu are ce căuta în index.
+Disallow: /studio
+Disallow: /credits
+Disallow: /cont
+Disallow: /admin
+Disallow: /login
+Disallow: /api/
+
+Sitemap: https://toonmint.cs-hub.xyz/sitemap.xml

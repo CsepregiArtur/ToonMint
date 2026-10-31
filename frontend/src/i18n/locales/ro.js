@@ -5,6 +5,12 @@ export default {
   'common.close': 'Închide',
   'common.back': 'Înapoi',
 
+  'notFound.title': 'Pagina nu există',
+  'notFound.subtitle':
+    'Linkul poate fi greșit sau pagina a fost mutată. Creditele și contul tău sunt în siguranță.',
+  'notFound.home': 'Înapoi acasă',
+  'notFound.back': 'Înapoi la pagina anterioară',
+
   'nav.studio': 'Studio',
   'nav.credits': 'Credite',
   'nav.account': 'Cont',
