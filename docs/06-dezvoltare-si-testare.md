@@ -44,9 +44,10 @@ xcodebuild -project ios/App/App.xcodeproj -scheme App -sdk iphonesimulator \
   CODE_SIGNING_ALLOWED=NO build
 ```
 
-Pentru ca aplicația să ajungă la server, build-ul are nevoie de
+Pentru ca aplicația să ajungă la server, build-ul mobil are nevoie de
 `VITE_API_BASE_URL=https://toonmint.cs-hub.xyz/api` în `frontend/.env` — altfel
-`/api` ar fi relativ la `capacitor://localhost`. Cumpărările cer în plus
+`/api` ar fi relativ la `capacitor://localhost`. Linia rămâne comentată pentru
+build-ul web, unde `/api` trebuie să rămână relativ. Cumpărările cer în plus
 `VITE_REVENUECAT_IOS_API_KEY` / `VITE_REVENUECAT_ANDROID_API_KEY`.
 
 `ios/App/App/public/` este generat (ignorat de git), deci după clonare se rulează
