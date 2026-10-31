@@ -29,8 +29,10 @@ npm run build                       # build de producție în dist/
 
 ### 2.1 Aplicațiile mobile (Capacitor)
 
-Shell-urile native refolosesc exact build-ul din `dist/`. Nu se editează nimic în
-`ios/` sau `android/` — se rulează sincronizarea.
+Shell-urile native refolosesc exact build-ul din `dist/`. Logica aplicației nu se
+scrie în `ios/` sau `android/` — doar `npm run build` + sincronizare. Singurele
+excepții, o singură dată, sunt permisiunile: `Info.plist` (iOS) și
+`AndroidManifest.xml` (Android).
 
 ```bash
 cd frontend
@@ -42,6 +44,13 @@ npx cap open ios                    # deschide Xcode (sau build direct, mai jos)
 xcodebuild -project ios/App/App.xcodeproj -scheme App -sdk iphonesimulator \
   -configuration Debug -destination 'generic/platform=iOS Simulator' \
   CODE_SIGNING_ALLOWED=NO build
+
+# Android: Gradle nu acceptă Java 27 de pe sistem, deci JAVA_HOME se fixează:
+npx cap sync android
+cd android
+echo "sdk.dir=$HOME/Library/Android/sdk" > local.properties
+JAVA_HOME=/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home \
+  ./gradlew assembleDebug            # → app/build/outputs/apk/debug/app-debug.apk
 ```
 
 Pentru ca aplicația să ajungă la server, build-ul mobil are nevoie de
@@ -50,8 +59,9 @@ Pentru ca aplicația să ajungă la server, build-ul mobil are nevoie de
 build-ul web, unde `/api` trebuie să rămână relativ. Cumpărările cer în plus
 `VITE_REVENUECAT_IOS_API_KEY` / `VITE_REVENUECAT_ANDROID_API_KEY`.
 
-`ios/App/App/public/` este generat (ignorat de git), deci după clonare se rulează
-întâi `npm run build && npx cap sync ios`. Detalii: [13 – Aplicații mobile](13-mobil-ios-android.md).
+`ios/App/App/public/` și `android/app/src/main/assets/public/` sunt generate (ignorate
+de git), deci după clonare se rulează întâi `npm run build` și apoi `npx cap sync`.
+Detalii: [13 – Aplicații mobile](13-mobil-ios-android.md).
 
 ## 3. Servicii externe fără Docker
 

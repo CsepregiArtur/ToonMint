@@ -35,8 +35,11 @@ singurele lucruri care **nu** există în web și sunt obligatorii în magazine 
 | Permisiuni cameră/fotografii în `Info.plist` | ✅ | `NSCameraUsageDescription`, `NSPhotoLibrary*` |
 | Build iOS pentru simulator | ✅ | `xcodebuild … -sdk iphonesimulator` → **BUILD SUCCEEDED** |
 | CORS pentru originile native pe producție | ✅ | `OPTIONS` → `Access-Control-Allow-Origin: capacitor://localhost` |
+| Proiect Android generat (Gradle 8.14.3, compileSdk 36) | ✅ | `frontend/android/` |
+| Permisiuni cameră/galerie în `AndroidManifest.xml` | ✅ | `CAMERA`, `READ_MEDIA_IMAGES`, `READ_EXTERNAL_STORAGE` (≤ 32) |
+| Build Android debug (APK) | ✅ | `./gradlew assembleDebug` → **BUILD SUCCESSFUL**, APK 14 MB |
 | Produse în App Store Connect / Play Console | ⛔ | necesită conturile de dezvoltator |
-| Proiect Android | ⛔ | așteaptă Android Studio |
+| Rulare pe simulator/emulator | ⛔ | nu există runtime iOS instalat și nici imagine de sistem Android |
 
 Ce lipsește ca aplicația să funcționeze cap-coadă: cheile publice RevenueCat
 (`VITE_REVENUECAT_IOS_API_KEY`), produsele create în magazine și build-ul cu
@@ -225,7 +228,7 @@ rotirea ecranului nu pierde jobul în curs, notificarea de expirare a imaginii r
 | Logout zilnic (JWT 24h) | UX | Refresh token (§3.4). |
 | Upload din cameră eșuează (HEIC) | funcțional | Camera plugin livrează JPEG/base64; backend acceptă PNG/JPEG/WEBP — de validat `.heic` respins corect cu `BAD_REQUEST`. |
 | `xcode-select` arată încă Command Line Tools | build iOS eșuează cu „requires Xcode” | `sudo xcode-select --switch /Applications/Xcode.app/Contents/Developer` (§3.1.1). |
-| Android Studio folosește Java 27 de pe sistem | AGP refuză JDK-ul | În Android Studio: *Settings → Build → Build Tools → Gradle → Gradle JDK* = **Embedded JDK (JBR)**; nu se adaugă Java 27 ca SDK. |
+| Gradle pornește cu Java 27 de pe sistem | `Unsupported class file major version 71` | Instalat `openjdk@21` (Homebrew); build-ul se rulează cu `JAVA_HOME=/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home`. În Android Studio, *Gradle JDK* = **Embedded JDK (JBR 25)**. |
 
 ## 7. Estimare
 
