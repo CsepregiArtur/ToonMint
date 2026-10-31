@@ -13,15 +13,18 @@
 > Un blocker de securitate + 5 probleme majore.
 >
 > **După remediere (secțiunea 9):** toate problemele de **cod** sunt rezolvate și testate.
-> Rămân **3 acțiuni de infrastructură** care nu pot fi făcute din repo
-> (header-e nginx, HSTS/Cloudflare, WAF) și **testul E2E** cu cont real.
+>
+> **Re-testare live (secțiunea 10):** frontend-ul nou e **deployed și verificat**.
+> ⚠️ **Backend-ul NU e redeployat** — rate limiting-ul pe login nu e activ în producție.
+> Rămân **4 acțiuni** în afara repo-ului: redeploy backend, header-e nginx,
+> HSTS/Cloudflare, WAF skip.
 
-| Categorie | Inițial | După remediere |
-|---|---|---|
-| 🔴 Blocker | 1 | **0** ✅ |
-| 🟠 Major | 5 | 2 (ambele pe server, nu în cod) |
-| 🟡 Minor | 6 | 4 |
-| ⏳ Netestate (necesită cont/plată) | 6 | 6 |
+| Categorie | Inițial | După remediere | La re-testare (live) |
+|---|---|---|---|
+| 🔴 Blocker | 1 | 0 (în cod) | **1 — backend nedeplyat** |
+| 🟠 Major | 5 | 2 (pe server) | 3 (+ WAF pe sitemap) |
+| 🟡 Minor | 6 | 4 | 4 |
+| ⏳ Netestate (necesită cont/plată) | 6 | 6 | 6 |
 
 ---
 
@@ -347,3 +350,84 @@ location / {
 
 **Testul E2E complet**, care nu poate fi automatizat fără cost și cont real:
 `register → cod email → login → upload poză → generare → download → cumpărare card 4242 → credite în DB`.
+
+---
+
+## 10. Re-testare live (2026-10-31, după deploy)
+
+Re-verificare completă pe `https://toonmint.cs-hub.xyz`, la ~20 minute după commit-ul `4d07e0a`.
+
+### 10.1 Rezultate — ce s-a rezolvat
+
+| Verificare | Înainte | Acum | Dovadă |
+|---|---|---|---|
+| `robots.txt` | `200 text/html` (index.html) | **`200 text/plain`** | primul rând: `User-agent: *` |
+| `sitemap.xml` | `200 text/html` (index.html) | **`200 text/xml`**, 5 URL-uri | `<?xml version="1.0"…` + 5× `<loc>` |
+| `favicon.ico` | `200 text/html` | **`200 image/x-icon`**, 5 318 B | header ICO valid (16/32/48 px) |
+| `apple-touch-icon.png` | lipsea (SVG, nesuportat de iOS) | **`200 image/png`** 180×180 | `rel="apple-touch-icon"` în HTML |
+| `og-image.png` | 404 | **`200 image/png`** 1200×630 | assets servite corect |
+| Meta Open Graph | 0 tag-uri | **9 `og:*` + 4 `twitter:*` + `canonical`** | `og:image` = `https://toonmint.cs-hub.xyz/og-image.png` |
+| Pagina 404 | URL necunoscut → redirect la `/login` | **pagina 404**, URL păstrat | `/this-page-does-not-exist-xyz` → „404 / This page does not exist", butoane „Back to home" + „Go back" |
+| Landing (regresie) | — | fără erori JS, fără request-uri eșuate | 0 failed, 0 pageerror |
+| Conținut dinamic | 26 stiluri, 3 prețuri | **26 stiluri, $4.99 / $24.99 / $1.99** | `/api/styles` + `/api/public/billing/catalog` = 200 |
+| Performanță | DCL 99 ms / load 130 ms | **DCL 116 ms / load 153 ms** | în limite normale |
+
+> **Notă:** la prima încărcare în browser, `robots.txt` și `favicon.ico` au fost servite din
+> **cache-ul HTTP local** (răspunsurile vechi de tip HTML, memorate din auditul anterior).
+> Cu cache-busting (`?cb=…`) fișierele reale sunt servite corect. Nu e o problemă de server,
+> dar un utilizator cu cache vechi trebuie să dea hard-reload o singură dată.
+
+### 10.2 🔴 Regresie critică: backend-ul NU este redeployat
+
+Rate limiting-ul pe login **nu este activ în producție**.
+
+| Test | Rezultat |
+|---|---|
+| 12 login-uri eșuate consecutive | `[401 × 12]` — niciun `429` |
+| Încă 20 (total **32**) | `[401 × 32]` — niciun `429`, fără `Retry-After` |
+
+Limita configurată e **10/minut** (`RATE_LIMIT_REQUESTS_PER_MINUTE:10`), deci al 11-lea ar fi trebuit
+respins. Concluzie: **jar-ul backend din producție este versiunea veche** — codul e în `main`
+(commit `4d07e0a`), dar nu a fost construit și repornit.
+
+**Acțiune obligatorie:**
+
+```bash
+cd backend && mvn -DskipTests package     # → target/toonmint-backend-1.0.0.jar
+# oprește serviciul, înlocuiește jar-ul, repornește
+```
+
+Atenție: după bump-ul de versiune, artefactul se numește **`toonmint-backend-1.0.0.jar`**
+(nu `toonmint-backend-0.1.0-SNAPSHOT.jar`) — actualizează scriptul de deploy / `systemd` / Dockerfile
+dacă numele e hardcodat. Local în `backend/target/` există încă `toonmint-backend-0.1.0-SNAPSHOT.jar`,
+semn că backend-ul nu a fost reconstruit după `fe9fc34`.
+
+**Verificare după redeploy:** 11 login-uri eșuate → al 11-lea răspunde `429 RATE_LIMIT_EXCEEDED` + `Retry-After`.
+
+### 10.3 ⚠️ Rămân neschimbate (în afara repo-ului)
+
+| # | Problemă | Dovadă la re-testare |
+|---|---|---|
+| M1 | Header-e de securitate pe HTML | `GET /` → `strict-transport-security`, `content-security-policy`, `x-frame-options`, `x-content-type-options`, `referrer-policy`, `permissions-policy` = **toate absente** |
+| M2 | HSTS | absent pe HTML și pe API |
+| — | WAF skip pe `/api/*` | `curl` → `403 "Your request was blocked."` pe `/api/styles`; webhook-ul rămâne `401` (excepția lui funcționează) |
+| — | **Nou: `sitemap.xml` blocat pentru clienți non-browser** | `curl` (chiar și cu UA de Chrome) → `403`; din browser → `200 text/xml` |
+
+**De ce contează `sitemap.xml`:** `robots.txt` este permise explicit de Cloudflare, dar `sitemap.xml`
+nu. Dacă botul de crawling nu e pe lista „verified bots", XML-ul e respins și sitemap-ul e ignorat.
+Adaugă în regula WAF de skip și `/sitemap.xml` (sau permite `starts_with(http.request.uri.path, "/sitemap")`).
+
+### 10.4 Verdict după re-testare
+
+| Zonă | Stare |
+|---|---|
+| Frontend (build nou) | ✅ deployat și verificat |
+| SEO tehnic (robots, sitemap, OG, favicon, 404) | ✅ rezolvat |
+| Securitate backend (rate limit login) | ⛔ **cod gata, dar nedeplyat** |
+| Header-e de securitate + HSTS | ⛔ neschimbate (nginx / Cloudflare) |
+| Cloudflare bot protection pe `/api/*` și `/sitemap.xml` | ⛔ neschimbat |
+| Test E2E complet | ⏳ nerealizat |
+
+> **Concluzie:** aplicația **nu este încă production-ready** — mai sunt **4 acțiuni de infrastructură**
+> (redeploy backend, header-e nginx, HSTS, WAF skip) plus testul E2E.
+> Din punct de vedere al codului, totul e implementat și testat (67 teste, 0 eșecuri).
