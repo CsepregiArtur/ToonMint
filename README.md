@@ -206,6 +206,7 @@ Profilul `prod` forțează `app.demo.enabled=false`, deci endpoint-ul nu există
 - [09 – Legal, GDPR și consimțământ](docs/09-legal-si-conformitate.md)
 - [10 – Limbi și localizare](docs/10-limbi-si-localizare.md)
 - [11 – Fiscalitate: PFA/SRL și TVA/OSS](docs/11-fiscalitate-si-tva.md)
+- [13 – Aplicații mobile: iOS și Android](docs/13-mobil-ios-android.md)
 - [10 – Bookkeeping](docs/10-finante.md)
 
 ## Structura proiectului
