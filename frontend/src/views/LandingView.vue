@@ -5,6 +5,7 @@ import BeforeAfterSlider from '../components/BeforeAfterSlider.vue'
 import TrialGenerator from '../components/TrialGenerator.vue'
 import http from '../api/client'
 import { useTrialStore } from '../stores/trial'
+import { t } from '../i18n'
 
 // Prima pagină: demonstrație „înainte/după” cu slider și generarea gratuită.
 const auth = useAuthStore()
@@ -18,6 +19,7 @@ const trial = useTrialStore()
 
 // Previzualizările lipsă (încă negenerate) sunt afișate ca plăci cu eticheta stilului.
 const missingPreviews = ref(new Set())
+const pricing = ref({ plans: [], packs: [] })
 
 // Hero-ul compară fotografia reală cu o variantă toon generată de AI; până când
 // acea imagine există, arătăm doar fotografia, ca să nu inducă în eroare.
@@ -43,6 +45,13 @@ onMounted(async () => {
     styles.value = []
   }
 
+  try {
+    const { data } = await http.get('/public/billing/catalog')
+    pricing.value = data
+  } catch (error) {
+    pricing.value = { plans: [], packs: [] }
+  }
+
   const probe = new Image()
   probe.onload = () => {
     heroAfterReady.value = true
@@ -53,39 +62,36 @@ onMounted(async () => {
   probe.src = '/demo/after.jpg'
 })
 
-// Pașii explicați sub demonstrație.
-const steps = [
-  { title: 'Încarci o fotografie', text: 'Portret, animal sau peisaj — orice poză funcționează.' },
-  { title: 'Alegi un stil', text: 'Peste 20 de stiluri: anime, manga, watercolor, cyberpunk și altele.' },
-  { title: 'Descarci rezultatul', text: 'Primești imaginea în câteva secunde, gata de distribuit.' }
-]
+// Pașii explicați sub demonstrație (recalculați când se schimbă limba).
+const steps = computed(() => [
+  { title: t('landing.steps.1t'), text: t('landing.steps.1d') },
+  { title: t('landing.steps.2t'), text: t('landing.steps.2d') },
+  { title: t('landing.steps.3t'), text: t('landing.steps.3d') }
+])
 </script>
 
 <template>
   <div class="landing">
     <section class="hero">
       <div class="hero-copy">
-        <span class="eyebrow">Photo → Toon</span>
-        <h1>Transformă orice fotografie în artă toon</h1>
-        <p class="hero-sub">
-          Încarci o poză, alegi un stil și primești varianta desenată în câteva secunde.
-          Prima imagine este gratuită — fără cont, doar cu adresa de email.
-        </p>
+        <span class="eyebrow">{{ t('landing.eyebrow') }}</span>
+        <h1>{{ t('landing.title') }}</h1>
+        <p class="hero-sub">{{ t('landing.subtitle') }}</p>
 
         <div class="hero-actions">
-          <a class="btn primary" href="#incearca">Încearcă gratuit</a>
+          <a class="btn primary" href="#incearca">{{ t('landing.try') }}</a>
           <template v-if="loggedIn">
-            <router-link class="btn ghost" to="/studio">Continuă în studio</router-link>
+            <router-link class="btn ghost" to="/studio">{{ t('landing.continue') }}</router-link>
           </template>
           <template v-else>
-            <router-link class="btn ghost" to="/login">Autentificare</router-link>
+            <router-link class="btn ghost" to="/login">{{ t('nav.login') }}</router-link>
           </template>
         </div>
 
         <ul class="hero-facts">
-          <li>1 imagine gratuită per email</li>
-          <li>Fără stocare permanentă a fotografiilor</li>
-          <li>Abonament de la 4.99 $/săptămână</li>
+          <li>{{ t('landing.fact.free') }}</li>
+          <li>{{ t('landing.fact.noStore') }}</li>
+          <li>{{ t('landing.fact.preview') }}</li>
         </ul>
       </div>
 
@@ -94,31 +100,30 @@ const steps = [
           v-if="heroAfterReady"
           before="/demo/before.jpg"
           after="/demo/after.jpg"
-          before-label="Fotografie"
+          :before-label="t('trial.before')"
           after-label="Toon"
           :initial="52"
+          class="hero-demo"
         />
         <div v-else class="hero-photo">
-          <img src="/demo/before.jpg" alt="Fotografie de exemplu" />
-          <span class="hero-photo-badge">Fotografie</span>
+          <img src="/demo/before.jpg" alt="ToonMint" />
+          <span class="hero-photo-badge">{{ t('landing.badge.photo') }}</span>
         </div>
         <p class="slider-hint muted small">
-          {{ heroAfterReady
-            ? 'Trage de bară pentru a compara fotografia cu varianta toon.'
-            : 'Varianta toon apare aici după prima generare cu Gemini.' }}
+          {{ heroAfterReady ? t('landing.slider.ready') : t('landing.slider.pending') }}
         </p>
       </div>
     </section>
 
     <TrialGenerator />
 
-    <section v-if="styles.length" class="card styles-showcase">
+    <section v-if="styles.length" id="stiluri" class="card styles-showcase">
       <header class="card-header">
         <div>
-          <h2>Peste {{ styles.length }} de stiluri artistice</h2>
-          <p class="muted">Alege atmosfera potrivită pentru fiecare fotografie.</p>
+          <h2>{{ t('landing.gallery.title') }}</h2>
+          <p class="muted">{{ t('landing.gallery.subtitle', { count: styles.length }) }}</p>
         </div>
-        <a class="btn ghost" href="#incearca">Alege un stil</a>
+        <a class="btn ghost" href="#incearca">{{ t('landing.gallery.cta') }}</a>
       </header>
       <div class="style-gallery">
         <button
@@ -127,13 +132,14 @@ const steps = [
           type="button"
           class="style-card"
           :class="{ active: style.id === trial.styleId, pending: missingPreviews.has(style.id) }"
-          :title="`Generează în stilul ${style.label}`"
+          :title="t('landing.gallery.try', { style: style.label })"
+            :aria-label="t('landing.gallery.try', { style: style.label })"
           @click="chooseStyle(style.id)"
         >
           <img
             v-if="style.previewUrl && !missingPreviews.has(style.id)"
             :src="style.previewUrl"
-            :alt="`Exemplu ${style.label}`"
+            :alt="style.label"
             loading="lazy"
             @error="markPreviewMissing(style.id)"
           />
@@ -151,16 +157,30 @@ const steps = [
       </article>
     </section>
 
-    <section class="pricing-teaser card">
+    <section class="pricing-teaser card pricing-section">
       <div>
-        <h2>După imaginea gratuită</h2>
-        <p class="muted">
-          Abonamentul săptămânal (4.99 $) include 50 de generări, cel anual (24.99 $) — 300.
-          Dacă rămâi fără credite, poți cumpăra 20 de generări pentru 1.99 $.
-        </p>
+        <h2>{{ t('landing.pricing.title') }}</h2>
+        <p class="muted">{{ t('landing.pricing.text') }}</p>
       </div>
+      <div v-if="pricing.plans.length || pricing.packs.length" class="public-pricing-grid">
+        <article v-for="product in [...pricing.plans, ...pricing.packs]" :key="product.id" class="public-price-tile">
+          <span class="muted small">
+            {{ pricing.plans.some((plan) => plan.id === product.id)
+              ? t('landing.pricing.subscription')
+              : t('landing.pricing.pack') }}
+          </span>
+          <strong>
+            {{ product.kind === 'SUBSCRIPTION'
+              ? (product.subscriptionType === 'WEEKLY' ? t('landing.pricing.weekly') : t('landing.pricing.yearly'))
+              : t('landing.pricing.extraCredits', { count: product.credits }) }}
+          </strong>
+          <span class="public-price">{{ product.price }}</span>
+          <span class="muted small">{{ t('landing.pricing.line', { count: product.credits }) }}</span>
+        </article>
+      </div>
+      <p v-else class="muted small">{{ t('landing.pricing.unavailable') }}</p>
       <router-link class="btn primary" :to="loggedIn ? '/credits' : '/login?mode=register'">
-        {{ loggedIn ? 'Vezi abonamentele' : 'Creează cont' }}
+        {{ loggedIn ? t('landing.pricing.ctaMember') : t('landing.pricing.ctaGuest') }}
       </router-link>
     </section>
   </div>

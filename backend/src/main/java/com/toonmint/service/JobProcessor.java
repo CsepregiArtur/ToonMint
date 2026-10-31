@@ -24,6 +24,7 @@ public class JobProcessor {
     private final ImageGenerationProvider imageProvider;
     private final ImageOptimizer imageOptimizer;
     private final CreditService creditService;
+    private final FinanceService financeService;
     private final AppProperties properties;
 
     /**
@@ -34,12 +35,14 @@ public class JobProcessor {
                         ImageGenerationProvider imageProvider,
                         ImageOptimizer imageOptimizer,
                         CreditService creditService,
+                        FinanceService financeService,
                         AppProperties properties) {
         this.jobRepository = jobRepository;
         this.tempImageStore = tempImageStore;
         this.imageProvider = imageProvider;
         this.imageOptimizer = imageOptimizer;
         this.creditService = creditService;
+        this.financeService = financeService;
         this.properties = properties;
     }
 
@@ -77,10 +80,23 @@ public class JobProcessor {
             tempImageStore.putResult(jobId, optimized.data(), optimized.mimeType());
             job.markCompleted();
             jobRepository.save(job);
+            recordGenerationCost(job);
             log.info("Job {} completed with provider {}", jobId, imageProvider.name());
         } catch (RuntimeException ex) {
             log.warn("Job {} failed: {}", jobId, ex.getMessage());
             fail(job, ex.getMessage() == null ? "Image generation failed" : ex.getMessage());
+        }
+    }
+
+    /**
+     * Înregistrează costul AI al generării. Bookkeeping-ul nu poate bloca livrarea
+     * imaginii, deci o eroare aici este doar logată.
+     */
+    private void recordGenerationCost(Job job) {
+        try {
+            financeService.recordGenerationCost(job);
+        } catch (RuntimeException ex) {
+            log.error("Could not record the AI cost for job {}", job.getId(), ex);
         }
     }
 

@@ -17,6 +17,17 @@ import java.util.UUID;
 public interface JobRepository extends JpaRepository<Job, Long> {
 
     /**
+     * Toate joburile unui utilizator, pentru exportul de date (GDPR art. 20).
+     */
+    List<Job> findByUser_IdOrderByCreatedAtDesc(Long userId);
+
+    /**
+     * Șterge joburile unui utilizator la ștergerea contului (rămân doar metadate
+     * fiscale în `credit_transactions`).
+     */
+    void deleteByUser_Id(Long userId);
+
+    /**
      * Caută un job după identificatorul public.
      */
     Optional<Job> findByPublicId(UUID publicId);

@@ -44,12 +44,19 @@ public class AdminBootstrap implements ApplicationRunner {
             return;
         }
         String normalized = email.trim().toLowerCase(Locale.ROOT);
-        if (userRepository.existsByEmailIgnoreCase(normalized)) {
+        User existing = userRepository.findByEmailIgnoreCase(normalized).orElse(null);
+        if (existing != null) {
+            if (!existing.isEmailVerified()) {
+                existing.markEmailVerified();
+                userRepository.save(existing);
+                log.info("Marked operator account {} as verified", normalized);
+            }
             return;
         }
         User admin = new User(normalized, passwordEncoder.encode(password), "ToonMint operator");
         admin.setRole(UserRole.ADMIN);
         admin.setCreditBalance(0);
+        admin.markEmailVerified();
         userRepository.save(admin);
         log.info("Created operator account {}", normalized);
     }

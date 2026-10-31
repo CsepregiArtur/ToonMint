@@ -16,4 +16,9 @@ public interface GuestTrialRepository extends JpaRepository<GuestTrial, Long> {
      * Găsește revendicarea de trial pentru o adresă.
      */
     Optional<GuestTrial> findByEmail(String email);
+
+    /**
+     * Șterge trialurile unei adrese (la ștergerea contului).
+     */
+    void deleteByEmail(String email);
 }

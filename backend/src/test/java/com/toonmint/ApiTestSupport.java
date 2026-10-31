@@ -56,18 +56,34 @@ abstract class ApiTestSupport {
     @Autowired
     protected TempImageStore tempImageStore;
 
+    @Autowired
+    protected TestVerificationMailSender verificationMail;
+
     protected String uniqueEmail(String prefix) {
         return prefix + "-" + UUID.randomUUID() + "@example.com";
     }
 
-    protected String registerAndGetToken(String email) throws Exception {
+    protected void registerPending(String email) throws Exception {
         String body = objectMapper.writeValueAsString(new RegisterPayload(email, "sup3r-secret-pass", "Test user"));
-        String response = mockMvc.perform(post("/api/auth/register")
+        mockMvc.perform(post("/api/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
-                .andExpect(status().isCreated())
+                .andExpect(status().isCreated());
+    }
+
+    protected String verifyEmailAndGetToken(String email, String code) throws Exception {
+        String body = objectMapper.writeValueAsString(new VerifyPayload(email, code));
+        String response = mockMvc.perform(post("/api/auth/verify-email")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
         return objectMapper.readTree(response).path("token").asText();
+    }
+
+    protected String registerAndGetToken(String email) throws Exception {
+        registerPending(email);
+        return verifyEmailAndGetToken(email, verificationMail.code(email));
     }
 
     @Transactional
@@ -133,6 +149,17 @@ abstract class ApiTestSupport {
         throw new AssertionError("Guest job " + publicId + " did not reach " + expected + ", last: " + last);
     }
 
-    protected record RegisterPayload(String email, String password, String displayName) {
+    protected record RegisterPayload(String email, String password, String displayName,
+                                     boolean acceptedTerms, String termsVersion) {
+
+        /**
+         * Varianta folosită de majoritatea testelor: acceptă termenii curent.
+         */
+        RegisterPayload(String email, String password, String displayName) {
+            this(email, password, displayName, true, "2026-10-31");
+        }
+    }
+
+    protected record VerifyPayload(String email, String code) {
     }
 }

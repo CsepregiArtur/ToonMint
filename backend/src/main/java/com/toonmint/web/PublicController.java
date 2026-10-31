@@ -2,6 +2,7 @@ package com.toonmint.web;
 
 import com.toonmint.service.GuestTrialService;
 import com.toonmint.service.JobService;
+import com.toonmint.config.AppProperties;
 import com.toonmint.web.dto.JobResponse;
 import com.toonmint.web.error.ApiException;
 import io.swagger.v3.oas.annotations.Operation;
@@ -25,6 +26,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -39,10 +41,41 @@ public class PublicController {
 
     private final GuestTrialService guestTrialService;
     private final JobService jobService;
+    private final AppProperties appProperties;
 
-    public PublicController(GuestTrialService guestTrialService, JobService jobService) {
+    public PublicController(GuestTrialService guestTrialService, JobService jobService,
+                            AppProperties appProperties) {
         this.guestTrialService = guestTrialService;
         this.jobService = jobService;
+        this.appProperties = appProperties;
+    }
+
+    /** Public prices and credit amounts, without personalized checkout URLs. */
+    @GetMapping("/billing/catalog")
+    @Operation(summary = "Public subscription and credit pack prices")
+    public PublicBillingCatalog billingCatalog() {
+        List<AppProperties.RevenueCat.Product> products = appProperties.revenueCat().products();
+        List<PublicProduct> plans = products.stream()
+                .filter(product -> product.kind() == AppProperties.RevenueCat.ProductKind.SUBSCRIPTION)
+                .map(PublicProduct::from)
+                .toList();
+        List<PublicProduct> packs = products.stream()
+                .filter(product -> product.kind() == AppProperties.RevenueCat.ProductKind.CREDIT_PACK)
+                .map(PublicProduct::from)
+                .toList();
+        return new PublicBillingCatalog(plans, packs);
+    }
+
+    public record PublicBillingCatalog(List<PublicProduct> plans, List<PublicProduct> packs) { }
+
+    public record PublicProduct(String id, String kind, String subscriptionType,
+                                String label, String price, int credits) {
+        static PublicProduct from(AppProperties.RevenueCat.Product product) {
+            return new PublicProduct(product.id(), product.kind().name(),
+                    product.subscriptionType() == null ? null : product.subscriptionType().name(),
+                    product.label(), product.price(),
+                    product.credits() == null ? 0 : product.credits());
+        }
     }
 
     /**
@@ -57,7 +90,7 @@ public class PublicController {
                                    @RequestParam(value = "image_base64", required = false) String imageBase64,
                                    HttpServletRequest request) {
         return guestTrialService.createTrial(email, readImage(image, imageBase64), styleId,
-                clientIp(request));
+                ClientIp.of(request));
     }
 
     /**
@@ -70,7 +103,7 @@ public class PublicController {
                                        Base64TrialRequest body,
                                        HttpServletRequest request) {
         return guestTrialService.createTrial(body.email(), decode(body.imageBase64()), body.styleId(),
-                clientIp(request));
+                ClientIp.of(request));
     }
 
     /**
@@ -105,14 +138,6 @@ public class PublicController {
                 .build());
         headers.setCacheControl("no-store");
         return ResponseEntity.ok().headers(headers).body(payload.data());
-    }
-
-    private String clientIp(HttpServletRequest request) {
-        String forwarded = request.getHeader("X-Forwarded-For");
-        if (forwarded != null && !forwarded.isBlank()) {
-            return forwarded.split(",")[0].trim();
-        }
-        return request.getRemoteAddr();
     }
 
     private byte[] readImage(MultipartFile image, String imageBase64) {

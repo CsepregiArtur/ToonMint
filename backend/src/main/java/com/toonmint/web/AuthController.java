@@ -2,10 +2,17 @@ package com.toonmint.web;
 
 import com.toonmint.service.AuthService;
 import com.toonmint.web.dto.AuthResponse;
+import com.toonmint.web.dto.CodeSentResponse;
+import com.toonmint.web.dto.ForgotPasswordRequest;
 import com.toonmint.web.dto.LoginRequest;
+import com.toonmint.web.dto.PendingVerificationResponse;
 import com.toonmint.web.dto.RegisterRequest;
+import com.toonmint.web.dto.ResendVerificationRequest;
+import com.toonmint.web.dto.ResetPasswordRequest;
+import com.toonmint.web.dto.VerifyEmailRequest;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -29,13 +36,54 @@ public class AuthController {
     }
 
     /**
-     * Creează un cont nou și returnează tokenul JWT.
+     * Creează contul și trimite codul de verificare a emailului.
      */
     @PostMapping("/register")
     @ResponseStatus(HttpStatus.CREATED)
-    @Operation(summary = "Create an account and return a JWT")
-    public AuthResponse register(@Valid @RequestBody RegisterRequest request) {
-        return authService.register(request);
+    @Operation(summary = "Create an account and send an email verification code")
+    public PendingVerificationResponse register(@Valid @RequestBody RegisterRequest request,
+                                                HttpServletRequest httpRequest) {
+        return authService.register(request, ClientIp.of(httpRequest));
+    }
+
+    /**
+     * Confirmă adresa de email cu codul primit și returnează tokenul JWT.
+     */
+    @PostMapping("/verify-email")
+    @Operation(summary = "Confirm the email address with the received code and return a JWT")
+    public AuthResponse verifyEmail(@Valid @RequestBody VerifyEmailRequest request) {
+        return authService.verifyEmail(request);
+    }
+
+    /**
+     * Retrimite codul de verificare a emailului.
+     */
+    @PostMapping("/resend-verification")
+    @ResponseStatus(HttpStatus.ACCEPTED)
+    @Operation(summary = "Send a new email verification code")
+    public CodeSentResponse resendVerification(@Valid @RequestBody ResendVerificationRequest request,
+                                               HttpServletRequest httpRequest) {
+        return authService.resendVerification(request.email(), ClientIp.of(httpRequest));
+    }
+
+    /**
+     * Trimite codul de resetare a parolei.
+     */
+    @PostMapping("/forgot-password")
+    @ResponseStatus(HttpStatus.ACCEPTED)
+    @Operation(summary = "Send a password reset code")
+    public CodeSentResponse forgotPassword(@Valid @RequestBody ForgotPasswordRequest request,
+                                           HttpServletRequest httpRequest) {
+        return authService.forgotPassword(request.email(), ClientIp.of(httpRequest));
+    }
+
+    /**
+     * Setează parola nouă pe baza codului primit și returnează tokenul JWT.
+     */
+    @PostMapping("/reset-password")
+    @Operation(summary = "Set a new password using the received code and return a JWT")
+    public AuthResponse resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
+        return authService.resetPassword(request);
     }
 
     /**

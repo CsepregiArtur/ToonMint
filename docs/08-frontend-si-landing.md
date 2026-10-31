@@ -44,6 +44,12 @@ Pe pagina de start imaginile sunt `public/demo/before.jpg` (fotografie CC0) și
 `public/demo/after.jpg` (derivare locală a aceleiași fotografii). Detalii despre
 licență: `frontend/public/demo/CREDITS.md`.
 
+## Limbi
+
+Interfața este tradusă prin `src/i18n/` (20 de limbi, detectare automată după limba
+browserului și fusul orar, plus selector în antet și în subsol). Detalii în
+[docs/10-limbi-si-localizare.md](10-limbi-si-localizare.md).
+
 După generare, aceeași componentă compară fotografia încărcată de vizitator cu
 rezultatul primit de la server.
 
@@ -89,7 +95,28 @@ iar butonul de generare este dezactivat după verificarea `GET /api/public/trial
 Starea este ținută în `src/stores/trial.js`, care eliberează `ObjectURL`-urile la
 `reset()`/demontare ca să nu țină memoria ocupată.
 
-## 5. Login demo (dezvoltare)
+## 5. Autentificare în UI
+
+`LoginView.vue` acoperă patru pași, fără rute suplimentare:
+
+```text
+Autentificare / Cont nou
+        │
+        ├─ register              → 201 { verificationRequired: true }
+        │     └─ cod OTP → POST /api/auth/verify-email → sesiune + redirect /studio
+        ├─ login                 → 403 EMAIL_NOT_VERIFIED → pasul de cod (retrimitere)
+        └─ Ai uitat parola?
+              ├─ POST /api/auth/forgot-password   → 202
+              └─ cod + parolă nouă → POST /api/auth/reset-password → sesiune + redirect
+```
+
+Codul are 6 cifre, `inputmode="numeric"` și `autocomplete="one-time-code"` (sugestie
+nativă pe mobil). Butonul de retrimitere afișează numărătoarea de 60 de secunde cerută
+de server; `429 CODE_COOLDOWN` resincronizează numărătoarea. `api/client.js` păstrează pe
+eroare și `code`-ul aplicativ (`EMAIL_NOT_VERIFIED`, `INVALID_CODE`, `CODE_COOLDOWN`),
+folosit de UI pentru a alege pasul potrivit.
+
+## 6. Login demo (dezvoltare)
 
 Când backendul rulează cu `app.demo.enabled=true` (profilul `dev`), `LoginView` cere
 `GET /api/auth/demo-login` și afișează două butoane:
@@ -101,7 +128,7 @@ Butonul apelează `POST /api/auth/demo-login` și primește un JWT normal, deci 
 aplicației funcționează identic cu un login real. În `prod` endpoint-ul nu există
 (proprietatea este forțată pe `false`), iar UI-ul nu afișează butoanele.
 
-## 6. Stiluri
+## 7. Stiluri
 
 Toate stilurile sunt în `src/assets/styles.css` (fără framework CSS): variabile CSS
 pentru temă, grilă responsive, badge-uri de status, carduri și slider. Breakpoint-ul

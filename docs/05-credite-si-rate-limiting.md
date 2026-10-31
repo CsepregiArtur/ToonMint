@@ -69,8 +69,19 @@ Token bucket cu capacitate `R` (cereri pe minut) și refill `R/60` tokenuri pe s
   folosit în dezvoltare și ca **fallback** dacă Redis cade.
 
 `RateLimitService` este apelat înainte de debitare, atât la crearea unui job, cât și
-la retry. Răspunsul `429` conține header-ul `Retry-After` și detaliile
-`retryAfterSeconds` / `requestsPerMinute`.
+la retry. Același serviciu limitează și fluxurile publice, pe chei separate:
+
+| Flux | Chei de rate limiting |
+|---|---|
+| Generare / retry | `user:<id>` |
+| Trial fără cont | `trial-email:<email>`, `trial-ip:<ip>` |
+| Înregistrare | `signup-email:<email>`, `signup-ip:<ip>` |
+| Coduri OTP (retrimitere / resetare) | `otp-email:<email>`, `otp-ip:<ip>` |
+| Cooldown cod OTP | 60s, verificat în DB (`CODE_COOLDOWN`), independent de token bucket |
+
+Răspunsul `429` al token bucket-ului conține header-ul `Retry-After` și detaliile
+`retryAfterSeconds` / `requestsPerMinute`; cooldown-ul de cod OTP returnează
+`429 CODE_COOLDOWN` cu `details.retryAfterSeconds`.
 
 ### De ce două mecanisme
 
@@ -118,6 +129,9 @@ HAVING u.credit_balance <> COALESCE(SUM(t.amount), 0);
 
 Rezultatul trebuie să fie gol. Orice diferență indică o scriere în afara
 `CreditService`.
+
+> Creditele nu sunt bani: încasările și costurile se urmăresc în registrul financiar
+> separat (`finance_entries`). Vezi [10 – Bookkeeping](10-finante.md).
 
 ## 6. Ajustări operaționale
 

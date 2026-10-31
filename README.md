@@ -6,6 +6,7 @@ generează o versiune cartoon/anime.
 - **Transformare AI a fotografiilor** în stil cartoon/anime (Gemini 3.1 Flash Image).
 - **Peste 20 de stiluri artistice** distincte (26 în configurația livrată), fiecare cu
   imagine de exemplu în galeria de pe prima pagină.
+- **Cont cu email confirmat**: cod OTP de 6 cifre la înregistrare și la resetarea parolei.
 
 Imaginile **nu sunt stocate permanent** — sunt ținute doar într-un cache temporar cu TTL,
 iar în baza de date rămân doar metadatele.
@@ -110,7 +111,7 @@ cereri și cache de imagini partajate). Detalii: [docs/06](docs/06-dezvoltare-si
 ## Rulare teste
 
 ```bash
-cd backend && mvn test        # 36 de teste de integrare pe H2
+cd backend && mvn test        # 60 de teste de integrare pe H2
 cd frontend && npm run build  # verifică build-ul Vue
 ```
 
@@ -188,6 +189,7 @@ Profilul `prod` forțează `app.demo.enabled=false`, deci endpoint-ul nu există
 | Plăți RevenueCat (produse, webhook, linkuri de checkout) | [docs/03-plati-revenuecat.md](docs/03-plati-revenuecat.md) |
 | Email prin Gmail SMTP (parolă de aplicație) | [docs/04-email-google-smtp.md](docs/04-email-google-smtp.md) |
 | Credite, rate limiting, marjă de profit | [docs/05-credite-si-rate-limiting.md](docs/05-credite-si-rate-limiting.md) |
+| Bookkeeping (încasări, costuri AI, cheltuieli, marjă) | [docs/10-finante.md](docs/10-finante.md) |
 | Variabile de mediu | [.env.example](.env.example) |
 
 ## Documentație
@@ -201,6 +203,10 @@ Profilul `prod` forțează `app.demo.enabled=false`, deci endpoint-ul nu există
 - [06 – Dezvoltare și testare](docs/06-dezvoltare-si-testare.md)
 - [07 – Securitate](docs/07-securitate.md)
 - [08 – Frontend și pagina de start](docs/08-frontend-si-landing.md)
+- [09 – Legal, GDPR și consimțământ](docs/09-legal-si-conformitate.md)
+- [10 – Limbi și localizare](docs/10-limbi-si-localizare.md)
+- [11 – Fiscalitate: PFA/SRL și TVA/OSS](docs/11-fiscalitate-si-tva.md)
+- [10 – Bookkeeping](docs/10-finante.md)
 
 ## Structura proiectului
 
@@ -216,7 +222,7 @@ backend/
     service/       logica de business (job-uri, credite, plăți, email)
     storage/       cache temporar pentru imagini
     web/           controllere REST + DTO-uri + tratarea erorilor
-  src/main/resources/db/migration/V1__init.sql
+  src/main/resources/db/migration/V1__init.sql ... V3__email_verification.sql
 frontend/
   public/demo/     before.jpg (fotografie CC0) + styles/*.jpg (exemple generate cu Gemini)
   src/components/  BeforeAfterSlider, TrialGenerator, JobUploader, JobList, CreditStore, AdminPanel
@@ -235,4 +241,7 @@ docs/              documentație în română
 3. **Plată**: frontend cere link RevenueCat → checkout găzduit de RevenueCat → webhook
    semnat → activare abonament / acordare credite, cu idempotență pe `event_id`.
 4. **Email**: operatorul selectează utilizatori → backend trimite prin Gmail SMTP și
-   înregistrează rezultatul în `email_messages`.
+   înregistrează rezultatul în `email_messages`. Codurile OTP (verificare cont, resetare
+   parolă) pleacă automat, iar cu `MAIL_ENABLED=false` sunt doar scrise în log.
+5. **Autentificare**: `register` creează contul neconfirmat și trimite codul → `verify-email`
+   confirmă adresa și emite JWT; `forgot-password` + `reset-password` refac parola cu un cod.

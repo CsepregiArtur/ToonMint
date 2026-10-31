@@ -1,0 +1,58 @@
+export default {
+  'common.language': 'Sprache',
+  'common.credits': { one: '{count} Credit', other: '{count} Credits' },
+  'nav.studio': 'Studio',
+  'nav.credits': 'Credits',
+  'nav.admin': 'Admin',
+  'nav.logout': 'Abmelden',
+  'nav.login': 'Anmelden',
+  'footer.tagline':
+    'ToonMint · Fotos werden nur vorübergehend verarbeitet (max. 10 Minuten), nie dauerhaft gespeichert · Zahlung über RevenueCat',
+  'footer.cookieSettings': 'Cookie-Einstellungen',
+  'legal.privacy': 'Datenschutz',
+  'legal.cookies': 'Cookies',
+  'legal.terms': 'AGB',
+  'legal.licenses': 'Lizenzen',
+  'consent.text':
+    'Wir verwenden unbedingt erforderliche Cookies, damit dein Konto funktioniert. Mit deiner Einwilligung aktivieren wir außerdem Analyse (Google Analytics, Microsoft Clarity) und gegebenenfalls Werbung (Google AdSense). Wir verkaufen keine Daten.',
+  'consent.customize': 'Anpassen',
+  'consent.reject': 'Nur notwendige',
+  'consent.accept': 'Alle akzeptieren',
+  'consent.modal.title': 'Cookie-Einstellungen',
+  'consent.modal.desc':
+    'Du kannst diese Optionen jederzeit ändern. Dokumentversion: {version}. Details in der',
+  'consent.modal.policy': 'Cookie-Richtlinie',
+  'consent.modal.necessary': 'Unbedingt erforderlich',
+  'consent.modal.necessaryText':
+    'Deine angemeldete Sitzung (toonmint.token) und diese Auswahl. Sie können nicht deaktiviert werden.',
+  'consent.modal.always': 'Immer aktiv',
+  'consent.modal.analytics': 'Analyse',
+  'consent.modal.analyticsText':
+    'Google Analytics 4 und Microsoft Clarity: besuchte Seiten, Heatmaps, Fehler. Das hilft uns, die Website zu verbessern.',
+  'consent.modal.ads': 'Werbung',
+  'consent.modal.adsText':
+    'Google AdSense: Anzeigen, auch personalisierte, und deren Messung. Ohne Einwilligung wird das Werbeskript gar nicht geladen.',
+  'consent.modal.withdraw': 'Alles widerrufen',
+  'consent.modal.save': 'Einstellungen speichern',
+  'landing.eyebrow': '✨ ToonMint · dein KI-Atelier',
+  'landing.title': 'Verwandle jedes Foto in Toon-Kunst',
+  'landing.subtitle':
+    'Lade ein Foto hoch, wähle einen Stil und erhalte die gezeichnete Version in unter zwei Minuten. Das erste Bild ist gratis — ohne Konto, nur mit E-Mail-Adresse.',
+  'landing.try': 'Kostenlos testen',
+  'landing.continue': 'Im Studio weitermachen',
+  'landing.fact.free': '1 Gratis-Bild pro E-Mail',
+  'landing.fact.noStore': 'Fotos werden nie dauerhaft gespeichert',
+  'landing.fact.preview': 'Stile vorher ansehen',
+  'landing.badge.photo': 'Beispielfoto',
+  'landing.slider.ready': 'Echtes Beispiel · ziehe den Regler, um die Verwandlung zu sehen.',
+  'landing.slider.pending': 'Schau dir die Stile unten an und teste kostenlos.',
+  'landing.gallery.title': 'Finde den Stil, der zu dir passt',
+  'landing.gallery.cta': 'Stil wählen',
+  'auth.tabLogin': 'Anmelden',
+  'auth.tabRegister': 'Konto erstellen',
+  'auth.email': 'E-Mail',
+  'auth.password': 'Passwort',
+  'auth.login': 'Anmelden',
+  'auth.register': 'Konto erstellen',
+  'auth.processing': 'Wird verarbeitet…'
+}

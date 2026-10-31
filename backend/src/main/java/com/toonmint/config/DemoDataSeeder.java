@@ -52,19 +52,27 @@ public class DemoDataSeeder implements ApplicationRunner {
 
     /**
      * Inserează un cont demo și îi acordă creditele inițiale, dacă emailul e liber.
+     * Conturile demo sunt considerate de încredere, deci marcate ca verificate.
      */
     private void seed(String email, String password, int credits, UserRole role, String displayName) {
         if (email == null || email.isBlank()) {
             return;
         }
         String normalized = email.trim().toLowerCase(Locale.ROOT);
-        if (userRepository.existsByEmailIgnoreCase(normalized)) {
+        User existing = userRepository.findByEmailIgnoreCase(normalized).orElse(null);
+        if (existing != null) {
+            if (!existing.isEmailVerified()) {
+                existing.markEmailVerified();
+                userRepository.save(existing);
+                log.info("Marked demo {} account {} as verified", role, normalized);
+            }
             return;
         }
         User user = new User(normalized, passwordEncoder.encode(password), displayName);
         user.setRole(role);
         user.setCreditBalance(Math.max(0, credits));
         user.setSubscriptionType(role == UserRole.ADMIN ? SubscriptionType.YEARLY : SubscriptionType.WEEKLY);
+        user.markEmailVerified();
         userRepository.save(user);
         log.info("Seeded demo {} account {} with {} credits", role, normalized, credits);
     }

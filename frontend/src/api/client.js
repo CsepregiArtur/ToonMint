@@ -24,6 +24,11 @@ http.interceptors.response.use(
     if (apiMessage) {
       error.message = apiMessage
     }
+    // Codul aplicativ (ex. EMAIL_NOT_VERIFIED, INVALID_CODE) e folosit de UI pentru fluxuri.
+    const apiCode = error.response?.data?.code
+    if (apiCode) {
+      error.code = apiCode
+    }
     if (error.response?.status === 401) {
       localStorage.removeItem('toonmint.token')
     }

@@ -8,7 +8,7 @@ implementată fiecare în cod.
 | # | Cerință | Implementare | Stare |
 |---|---|---|---|
 | 1 | Server Java (Spring Boot 3) | `backend/pom.xml`, `com.toonmint.ToonMintApplication` | ✅ |
-| 2 | Minim 3–4 tabele cu relații | `users`, `jobs`, `credit_transactions`, `subscription_events`, `email_messages` (Flyway `V1__init.sql`) | ✅ 5 tabele |
+| 2 | Minim 3–4 tabele cu relații | `users`, `jobs`, `credit_transactions`, `subscription_events`, `email_messages`, `guest_trials`, `verification_codes` (Flyway `V1`–`V3`) | ✅ 7 tabele |
 | 3 | 8 endpoint-uri CRUD | vezi secțiunea 3 din acest document | ✅ |
 | 4 | 2 endpoint-uri cu custom query | `GET /api/users/{userId}/jobs?status=`, `GET /api/jobs/stats?from=&to=` | ✅ |
 | 5 | Frontend Vue cu minim 4 componente | `JobUploader.vue`, `JobList.vue`, `CreditStore.vue`, `AdminPanel.vue` | ✅ |
@@ -21,6 +21,7 @@ implementată fiecare în cod.
 | 12 | Plăți | RevenueCat (link de checkout + webhook) | ✅ |
 | 13 | Email | Google/Gmail SMTP prin Spring Mail | ✅ |
 | 14 | Autentificare JWT | `JwtService`, `JwtAuthenticationFilter`, Spring Security | ✅ |
+| 14b | Verificare email și resetare parolă cu cod OTP | `VerificationCodeService` + `EmailVerificationMailer` + `/api/auth/verify-email`, `/forgot-password`, `/reset-password` | ✅ |
 | 15 | Documentație API | Swagger UI (`/swagger-ui.html`) + `docs/02-api.md` | ✅ |
 | 16 | O generare gratuită fără cont (doar email) | `GuestTrialService` + `guest_trials` + `/api/public/**` | ✅ |
 | 17 | Blocare după trial: abonament sau credite | `402 TRIAL_ALREADY_USED` + catalog RevenueCat | ✅ |

@@ -1,11 +1,13 @@
 package com.toonmint.web;
 
 import com.toonmint.domain.JobStatus;
+import com.toonmint.service.AccountService;
 import com.toonmint.service.AuthService;
 import com.toonmint.service.JobService;
 import com.toonmint.service.UserService;
 import com.toonmint.security.AuthenticatedUser;
 import com.toonmint.security.CurrentUser;
+import com.toonmint.web.dto.AccountExportResponse;
 import com.toonmint.web.dto.JobResponse;
 import com.toonmint.web.dto.PageResponse;
 import com.toonmint.web.dto.RegisterRequest;
@@ -13,8 +15,10 @@ import com.toonmint.web.dto.UpdateUserRequest;
 import com.toonmint.web.dto.UserResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -35,16 +39,18 @@ public class UserController {
     private final UserService userService;
     private final AuthService authService;
     private final JobService jobService;
+    private final AccountService accountService;
     private final CurrentUser currentUser;
 
     /**
      * Injectează serviciile de utilizatori, autentificare și job-uri.
      */
     public UserController(UserService userService, AuthService authService, JobService jobService,
-                          CurrentUser currentUser) {
+                          AccountService accountService, CurrentUser currentUser) {
         this.userService = userService;
         this.authService = authService;
         this.jobService = jobService;
+        this.accountService = accountService;
         this.currentUser = currentUser;
     }
 
@@ -54,8 +60,8 @@ public class UserController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     @Operation(summary = "Create a user (public sign-up)")
-    public UserResponse create(@Valid @RequestBody RegisterRequest request) {
-        return UserResponse.from(authService.createUser(request), Instant.now());
+    public UserResponse create(@Valid @RequestBody RegisterRequest request, HttpServletRequest httpRequest) {
+        return UserResponse.from(authService.createUser(request, ClientIp.of(httpRequest)), Instant.now());
     }
 
     /**
@@ -66,6 +72,28 @@ public class UserController {
     public UserResponse me() {
         AuthenticatedUser user = currentUser.require();
         return userService.get(user.id(), user);
+    }
+
+    /**
+     * Exportul datelor personale, într-un singur document JSON (GDPR art. 20).
+     */
+    @GetMapping("/me/export")
+    @Operation(summary = "Export all personal data of the current user (GDPR art. 20)")
+    public AccountExportResponse export() {
+        return accountService.exportData(currentUser.require());
+    }
+
+    /**
+     * Ștergerea contului la cererea utilizatorului (GDPR art. 17).
+     *
+     * <p>Datele sunt anonimizate, iar joburile și codurile dispar imediat. Dovezile
+     * contabile rămân, fără date de profil, conform obligației legale de arhivare.
+     */
+    @DeleteMapping("/me")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @Operation(summary = "Delete the current account and anonymise its personal data (GDPR art. 17)")
+    public void deleteMe() {
+        accountService.deleteAccount(currentUser.require());
     }
 
     /**

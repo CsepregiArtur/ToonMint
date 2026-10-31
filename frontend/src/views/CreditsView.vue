@@ -1,5 +1,6 @@
 <script setup>
 import CreditStore from '../components/CreditStore.vue'
+import { t } from '../i18n'
 
 // Pagina de credite: abonamente, pachete și istoric.
 </script>
@@ -8,8 +9,8 @@ import CreditStore from '../components/CreditStore.vue'
   <div class="stack">
     <header class="page-header">
       <div>
-        <h1>Credite & abonamente</h1>
-        <p class="muted">Plățile sunt procesate de RevenueCat; creditele apar imediat după confirmare.</p>
+        <h1>{{ t('credits.title') }}</h1>
+        <p class="muted">{{ t('credits.subtitle') }}</p>
       </div>
     </header>
     <CreditStore />

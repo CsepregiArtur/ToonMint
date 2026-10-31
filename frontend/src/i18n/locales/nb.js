@@ -1,0 +1,58 @@
+export default {
+  'common.language': 'Språk',
+  'common.credits': { one: '{count} kreditt', other: '{count} kreditter' },
+  'nav.studio': 'Studio',
+  'nav.credits': 'Kreditter',
+  'nav.admin': 'Admin',
+  'nav.logout': 'Logg ut',
+  'nav.login': 'Logg inn',
+  'footer.tagline':
+    'ToonMint · bilder behandles midlertidig (maks. 10 minutter), lagres aldri permanent · betaling via RevenueCat',
+  'footer.cookieSettings': 'Innstillinger for informasjonskapsler',
+  'legal.privacy': 'Personvern',
+  'legal.cookies': 'Informasjonskapsler',
+  'legal.terms': 'Vilkår',
+  'legal.licenses': 'Lisenser',
+  'consent.text':
+    'Vi bruker strengt nødvendige informasjonskapsler for at kontoen din skal fungere. Med samtykket ditt aktiverer vi også analyse (Google Analytics, Microsoft Clarity) og eventuelt annonser (Google AdSense). Vi selger aldri dataene dine.',
+  'consent.customize': 'Tilpass',
+  'consent.reject': 'Kun nødvendige',
+  'consent.accept': 'Godta alle',
+  'consent.modal.title': 'Innstillinger for informasjonskapsler',
+  'consent.modal.desc':
+    'Du kan endre disse valgene når som helst. Dokumentversjon: {version}. Detaljer i',
+  'consent.modal.policy': 'retningslinjene for informasjonskapsler',
+  'consent.modal.necessary': 'Strengt nødvendige',
+  'consent.modal.necessaryText':
+    'Den innloggede økten din (toonmint.token) og dette valget. De kan ikke slås av.',
+  'consent.modal.always': 'Alltid aktive',
+  'consent.modal.analytics': 'Analyse',
+  'consent.modal.analyticsText':
+    'Google Analytics 4 og Microsoft Clarity: besøkte sider, heatmaps, feil. Hjelper oss å forbedre nettstedet.',
+  'consent.modal.ads': 'Annonser',
+  'consent.modal.adsText':
+    'Google AdSense: annonser, også personlige, og måling av dem. Uten samtykke lastes ikke annonseskriptet i det hele tatt.',
+  'consent.modal.withdraw': 'Trekk tilbake alle',
+  'consent.modal.save': 'Lagre innstillinger',
+  'landing.eyebrow': '✨ ToonMint · ditt AI-atelier',
+  'landing.title': 'Gjør hvilket som helst bilde om til toonkunst',
+  'landing.subtitle':
+    'Last opp et bilde, velg en stil og få den tegnede versjonen på under to minutter. Det første bildet er gratis — ingen konto, bare en e-postadresse.',
+  'landing.try': 'Prøv gratis',
+  'landing.continue': 'Fortsett i studioet',
+  'landing.fact.free': '1 gratis bilde per e-postadresse',
+  'landing.fact.noStore': 'Bilder lagres aldri permanent',
+  'landing.fact.preview': 'Se stilene før du velger',
+  'landing.badge.photo': 'Eksempelbilde',
+  'landing.slider.ready': 'Ekte eksempel · dra i håndtaket for å se forvandlingen.',
+  'landing.slider.pending': 'Se stilene nedenfor og prøv gratis.',
+  'landing.gallery.title': 'Finn stilen som passer deg',
+  'landing.gallery.cta': 'Velg en stil',
+  'auth.tabLogin': 'Logg inn',
+  'auth.tabRegister': 'Opprett konto',
+  'auth.email': 'E-post',
+  'auth.password': 'Passord',
+  'auth.login': 'Logg inn',
+  'auth.register': 'Opprett konto',
+  'auth.processing': 'Behandler…'
+}

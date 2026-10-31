@@ -1,0 +1,58 @@
+export default {
+  'common.language': 'Språk',
+  'common.credits': { one: '{count} kredit', other: '{count} credits' },
+  'nav.studio': 'Studio',
+  'nav.credits': 'Krediter',
+  'nav.admin': 'Admin',
+  'nav.logout': 'Logga ut',
+  'nav.login': 'Logga in',
+  'footer.tagline':
+    'ToonMint · foton bearbetas tillfälligt (max 10 minuter), sparas aldrig permanent · betalningar via RevenueCat',
+  'footer.cookieSettings': 'Cookieinställningar',
+  'legal.privacy': 'Integritet',
+  'legal.cookies': 'Cookies',
+  'legal.terms': 'Villkor',
+  'legal.licenses': 'Licenser',
+  'consent.text':
+    'Vi använder strikt nödvändiga cookies så att ditt konto fungerar. Med ditt samtycke aktiverar vi även analys (Google Analytics, Microsoft Clarity) och, i förekommande fall, annonser (Google AdSense). Vi säljer aldrig dina uppgifter.',
+  'consent.customize': 'Anpassa',
+  'consent.reject': 'Endast nödvändiga',
+  'consent.accept': 'Acceptera alla',
+  'consent.modal.title': 'Cookieinställningar',
+  'consent.modal.desc':
+    'Du kan ändra dessa alternativ när som helst. Dokumentversion: {version}. Detaljer i',
+  'consent.modal.policy': 'cookiepolicyn',
+  'consent.modal.necessary': 'Strikt nödvändiga',
+  'consent.modal.necessaryText':
+    'Din inloggade session (toonmint.token) och detta val. De kan inte stängas av.',
+  'consent.modal.always': 'Alltid aktiva',
+  'consent.modal.analytics': 'Analys',
+  'consent.modal.analyticsText':
+    'Google Analytics 4 och Microsoft Clarity: besökta sidor, heatmaps, fel. Hjälper oss förbättra webbplatsen.',
+  'consent.modal.ads': 'Annonser',
+  'consent.modal.adsText':
+    'Google AdSense: annonser, även personanpassade, och mätning av dem. Utan samtycke laddas annonsskriptet inte alls.',
+  'consent.modal.withdraw': 'Återkalla alla',
+  'consent.modal.save': 'Spara inställningar',
+  'landing.eyebrow': '✨ ToonMint · din AI-ateljé',
+  'landing.title': 'Gör om vilket foto som helst till toonkonst',
+  'landing.subtitle':
+    'Ladda upp ett foto, välj en stil och få den tecknade versionen på under två minuter. Den första bilden är gratis — inget konto, bara en e-postadress.',
+  'landing.try': 'Prova gratis',
+  'landing.continue': 'Fortsätt i studion',
+  'landing.fact.free': '1 gratis bild per e-postadress',
+  'landing.fact.noStore': 'Foton sparas aldrig permanent',
+  'landing.fact.preview': 'Förhandsgranska stilarna innan du väljer',
+  'landing.badge.photo': 'Exempelfoto',
+  'landing.slider.ready': 'Riktigt exempel · dra i reglaget för att se förvandlingen.',
+  'landing.slider.pending': 'Bläddra bland stilarna nedan och prova gratis.',
+  'landing.gallery.title': 'Hitta stilen som passar dig',
+  'landing.gallery.cta': 'Välj en stil',
+  'auth.tabLogin': 'Logga in',
+  'auth.tabRegister': 'Skapa konto',
+  'auth.email': 'E-post',
+  'auth.password': 'Lösenord',
+  'auth.login': 'Logga in',
+  'auth.register': 'Skapa konto',
+  'auth.processing': 'Bearbetar…'
+}

@@ -1,0 +1,58 @@
+export default {
+  'common.language': 'Kieli',
+  'common.credits': { one: '{count} krediitti', other: '{count} krediittiä' },
+  'nav.studio': 'Studio',
+  'nav.credits': 'Krediitit',
+  'nav.admin': 'Ylläpito',
+  'nav.logout': 'Kirjaudu ulos',
+  'nav.login': 'Kirjaudu sisään',
+  'footer.tagline':
+    'ToonMint · kuvat käsitellään väliaikaisesti (enintään 10 minuuttia), niitä ei koskaan tallenneta pysyvästi · maksut RevenueCatin kautta',
+  'footer.cookieSettings': 'Evästeasetukset',
+  'legal.privacy': 'Tietosuoja',
+  'legal.cookies': 'Evästeet',
+  'legal.terms': 'Käyttöehdot',
+  'legal.licenses': 'Lisenssit',
+  'consent.text':
+    'Käytämme välttämättömiä evästeitä, jotta tilisi toimii. Suostumuksellasi otamme käyttöön myös analytiikan (Google Analytics, Microsoft Clarity) ja tarvittaessa mainonnan (Google AdSense). Emme koskaan myy tietojasi.',
+  'consent.customize': 'Mukauta',
+  'consent.reject': 'Vain välttämättömät',
+  'consent.accept': 'Hyväksy kaikki',
+  'consent.modal.title': 'Evästeasetukset',
+  'consent.modal.desc':
+    'Voit muuttaa näitä asetuksia milloin tahansa. Asiakirjojen versio: {version}. Lisätiedot',
+  'consent.modal.policy': 'evästekäytännöstä',
+  'consent.modal.necessary': 'Välttämättömät',
+  'consent.modal.necessaryText':
+    'Kirjautunut istuntosi (toonmint.token) ja tämä valinta. Niitä ei voi poistaa käytöstä.',
+  'consent.modal.always': 'Aina käytössä',
+  'consent.modal.analytics': 'Analytiikka',
+  'consent.modal.analyticsText':
+    'Google Analytics 4 ja Microsoft Clarity: käydyt sivut, lämpökartat, virheet. Auttaa meitä parantamaan sivustoa.',
+  'consent.modal.ads': 'Mainonta',
+  'consent.modal.adsText':
+    'Google AdSense: mainokset, myös personoidut, ja niiden mittaus. Ilman suostumusta mainoskomentosarjaa ei ladata lainkaan.',
+  'consent.modal.withdraw': 'Peruuta kaikki',
+  'consent.modal.save': 'Tallenna asetukset',
+  'landing.eyebrow': '✨ ToonMint · sinun AI-studiosi',
+  'landing.title': 'Muuta mikä tahansa kuva toon-taiteeksi',
+  'landing.subtitle':
+    'Lataa kuva, valitse tyyli ja saat piirretyn version alle kahdessa minuutissa. Ensimmäinen kuva on ilmainen — ilman tiliä, vain sähköpostiosoite.',
+  'landing.try': 'Kokeile ilmaiseksi',
+  'landing.continue': 'Jatka studiossa',
+  'landing.fact.free': '1 ilmainen kuva sähköpostia kohden',
+  'landing.fact.noStore': 'Kuvia ei koskaan tallenneta pysyvästi',
+  'landing.fact.preview': 'Katso tyylit ennen valintaa',
+  'landing.badge.photo': 'Esimerkkikuva',
+  'landing.slider.ready': 'Oikea esimerkki · vedä kahvasta nähdäksesi muutoksen.',
+  'landing.slider.pending': 'Katso tyylit alta ja kokeile ilmaiseksi.',
+  'landing.gallery.title': 'Löydä sinulle sopiva tyyli',
+  'landing.gallery.cta': 'Valitse tyyli',
+  'auth.tabLogin': 'Kirjaudu sisään',
+  'auth.tabRegister': 'Luo tili',
+  'auth.email': 'Sähköposti',
+  'auth.password': 'Salasana',
+  'auth.login': 'Kirjaudu sisään',
+  'auth.register': 'Luo tili',
+  'auth.processing': 'Käsitellään…'
+}

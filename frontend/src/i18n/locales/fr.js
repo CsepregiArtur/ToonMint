@@ -1,0 +1,58 @@
+export default {
+  'common.language': 'Langue',
+  'common.credits': { one: '{count} crédit', other: '{count} crédits' },
+  'nav.studio': 'Studio',
+  'nav.credits': 'Crédits',
+  'nav.admin': 'Admin',
+  'nav.logout': 'Déconnexion',
+  'nav.login': 'Connexion',
+  'footer.tagline':
+    'ToonMint · photos traitées temporairement (10 minutes max), jamais stockées · paiements via RevenueCat',
+  'footer.cookieSettings': 'Paramètres des cookies',
+  'legal.privacy': 'Confidentialité',
+  'legal.cookies': 'Cookies',
+  'legal.terms': 'Conditions générales',
+  'legal.licenses': 'Licences',
+  'consent.text':
+    'Nous utilisons des cookies strictement nécessaires au fonctionnement de votre compte. Avec votre accord, nous activons aussi la mesure d’audience (Google Analytics, Microsoft Clarity) et, le cas échéant, la publicité (Google AdSense). Nous ne vendons jamais vos données.',
+  'consent.customize': 'Personnaliser',
+  'consent.reject': 'Essentiels uniquement',
+  'consent.accept': 'Tout accepter',
+  'consent.modal.title': 'Paramètres des cookies',
+  'consent.modal.desc':
+    'Vous pouvez modifier ces options à tout moment. Version des documents : {version}. Détails dans la',
+  'consent.modal.policy': 'politique de cookies',
+  'consent.modal.necessary': 'Strictement nécessaires',
+  'consent.modal.necessaryText':
+    'Votre session connectée (toonmint.token) et ce choix. Ils ne peuvent pas être désactivés.',
+  'consent.modal.always': 'Toujours actifs',
+  'consent.modal.analytics': 'Mesure d’audience',
+  'consent.modal.analyticsText':
+    'Google Analytics 4 et Microsoft Clarity : pages vues, cartes de chaleur, erreurs. Cela nous aide à améliorer le site.',
+  'consent.modal.ads': 'Publicité',
+  'consent.modal.adsText':
+    'Google AdSense : annonces, y compris personnalisées, et leur mesure. Sans accord, le script publicitaire n’est pas chargé du tout.',
+  'consent.modal.withdraw': 'Tout retirer',
+  'consent.modal.save': 'Enregistrer les préférences',
+  'landing.eyebrow': '✨ ToonMint · votre atelier IA',
+  'landing.title': 'Transformez n’importe quelle photo en art toon',
+  'landing.subtitle':
+    'Importez une photo, choisissez un style et obtenez la version dessinée en moins de deux minutes. La première image est gratuite — sans compte, juste une adresse e-mail.',
+  'landing.try': 'Essayer gratuitement',
+  'landing.continue': 'Continuer dans le studio',
+  'landing.fact.free': '1 image gratuite par e-mail',
+  'landing.fact.noStore': 'Aucun stockage permanent des photos',
+  'landing.fact.preview': 'Prévisualisez les styles avant de choisir',
+  'landing.badge.photo': 'Photo d’exemple',
+  'landing.slider.ready': 'Exemple réel · faites glisser pour voir la transformation.',
+  'landing.slider.pending': 'Parcourez les styles ci-dessous et essayez gratuitement.',
+  'landing.gallery.title': 'Trouvez le style qui vous correspond',
+  'landing.gallery.cta': 'Choisir un style',
+  'auth.tabLogin': 'Connexion',
+  'auth.tabRegister': 'Créer un compte',
+  'auth.email': 'E-mail',
+  'auth.password': 'Mot de passe',
+  'auth.login': 'Se connecter',
+  'auth.register': 'Créer le compte',
+  'auth.processing': 'Traitement…'
+}

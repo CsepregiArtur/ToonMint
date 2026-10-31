@@ -1,0 +1,58 @@
+export default {
+  'common.language': 'Език',
+  'common.credits': { one: '{count} кредит', other: '{count} кредита' },
+  'nav.studio': 'Студио',
+  'nav.credits': 'Кредити',
+  'nav.admin': 'Админ',
+  'nav.logout': 'Изход',
+  'nav.login': 'Вход',
+  'footer.tagline':
+    'ToonMint · снимките се обработват временно (до 10 минути) и никога не се съхраняват постоянно · плащания чрез RevenueCat',
+  'footer.cookieSettings': 'Настройки за бисквитки',
+  'legal.privacy': 'Поверителност',
+  'legal.cookies': 'Бисквитки',
+  'legal.terms': 'Общи условия',
+  'legal.licenses': 'Лицензи',
+  'consent.text':
+    'Използваме строго необходими бисквитки, за да работи профилът ви. С ваше съгласие активираме и аналитика (Google Analytics, Microsoft Clarity) и, когато е приложимо, реклами (Google AdSense). Никога не продаваме данните ви.',
+  'consent.customize': 'Персонализиране',
+  'consent.reject': 'Само необходимите',
+  'consent.accept': 'Приемане на всички',
+  'consent.modal.title': 'Настройки за бисквитки',
+  'consent.modal.desc':
+    'Можете да промените тези опции по всяко време. Версия на документите: {version}. Подробности в',
+  'consent.modal.policy': 'политиката за бисквитки',
+  'consent.modal.necessary': 'Строго необходими',
+  'consent.modal.necessaryText':
+    'Вписаната ви сесия (toonmint.token) и този избор. Не могат да бъдат изключени.',
+  'consent.modal.always': 'Винаги активни',
+  'consent.modal.analytics': 'Аналитика',
+  'consent.modal.analyticsText':
+    'Google Analytics 4 и Microsoft Clarity: посетени страници, топлинни карти, грешки. Помага ни да подобрим сайта.',
+  'consent.modal.ads': 'Реклами',
+  'consent.modal.adsText':
+    'Google AdSense: реклами, включително персонализирани, и тяхното измерване. Без съгласие рекламният скрипт изобщо не се зарежда.',
+  'consent.modal.withdraw': 'Оттегляне на всичко',
+  'consent.modal.save': 'Запазване на предпочитанията',
+  'landing.eyebrow': '✨ ToonMint · твоето AI студио',
+  'landing.title': 'Превърни всяка снимка в toon изкуство',
+  'landing.subtitle':
+    'Качи снимка, избери стил и получи нарисуваната версия за под две минути. Първото изображение е безплатно — без профил, само с имейл адрес.',
+  'landing.try': 'Опитай безплатно',
+  'landing.continue': 'Продължи в студиото',
+  'landing.fact.free': '1 безплатно изображение на имейл',
+  'landing.fact.noStore': 'Снимките никога не се съхраняват постоянно',
+  'landing.fact.preview': 'Разгледай стиловете преди да избереш',
+  'landing.badge.photo': 'Примерна снимка',
+  'landing.slider.ready': 'Реален пример · плъзни лентата, за да видиш трансформацията.',
+  'landing.slider.pending': 'Разгледай стиловете по-долу и опитай безплатно.',
+  'landing.gallery.title': 'Намери стила, който ти подхожда',
+  'landing.gallery.cta': 'Избери стил',
+  'auth.tabLogin': 'Вход',
+  'auth.tabRegister': 'Създай профил',
+  'auth.email': 'Имейл',
+  'auth.password': 'Парола',
+  'auth.login': 'Влез',
+  'auth.register': 'Създай профил',
+  'auth.processing': 'Обработка…'
+}

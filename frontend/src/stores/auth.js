@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import http from '../api/client'
+import { SITE } from '../legal/site'
 
 // Starea de autentificare: tokenul JWT, profilul curent și acțiunile de login/register/logout.
 export const useAuthStore = defineStore('auth', {
@@ -42,12 +43,72 @@ export const useAuthStore = defineStore('auth', {
       }
     },
 
-    // Creează un cont nou și autentifică utilizatorul imediat.
+    // Creează un cont nou; serverul trimite un cod de verificare pe email.
+    // Nu autentifică imediat: contul trebuie confirmat cu codul primit.
     async register(email, password, displayName) {
       this.loading = true
       this.error = ''
       try {
-        const { data } = await http.post('/auth/register', { email, password, displayName })
+        const { data } = await http.post('/auth/register', {
+          email,
+          password,
+          displayName,
+          // Dovada consimțământului: backendul salvează versiunea + momentul.
+          acceptedTerms: true,
+          termsVersion: SITE.docVersion
+        })
+        return data
+      } catch (error) {
+        this.error = error.message
+        throw error
+      } finally {
+        this.loading = false
+      }
+    },
+
+    // Confirmă adresa de email cu codul OTP și deschide sesiunea.
+    async verifyEmail(email, code) {
+      this.loading = true
+      this.error = ''
+      try {
+        const { data } = await http.post('/auth/verify-email', { email, code })
+        this.applySession(data)
+      } catch (error) {
+        this.error = error.message
+        throw error
+      } finally {
+        this.loading = false
+      }
+    },
+
+    // Retrimite codul de verificare a emailului.
+    async resendVerification(email) {
+      this.loading = true
+      try {
+        const { data } = await http.post('/auth/resend-verification', { email })
+        return data
+      } finally {
+        this.loading = false
+      }
+    },
+
+    // Cere un cod de resetare a parolei.
+    async forgotPassword(email) {
+      this.loading = true
+      try {
+        const { data } = await http.post('/auth/forgot-password', { email })
+        return data
+      } finally {
+        this.loading = false
+      }
+    },
+
+    // Setează parola nouă pe baza codului primit și deschide sesiunea.
+    async resetPassword(email, code, newPassword) {
+      this.loading = true
+      this.error = ''
+      try {
+        const { data } = await http.post('/auth/reset-password', { email, code, newPassword })
         this.applySession(data)
       } catch (error) {
         this.error = error.message
@@ -83,7 +144,8 @@ export const useAuthStore = defineStore('auth', {
     },
 
     // Reîncarcă profilul curent (credite, tip abonament) de la server.
-    async loadProfile() {
+    // `logoutOnError: false` păstrează sesiunea la o eroare tranzitorie (ex. polling de plată).
+    async loadProfile({ logoutOnError = true } = {}) {
       if (!this.token) {
         return
       }
@@ -91,7 +153,9 @@ export const useAuthStore = defineStore('auth', {
         const { data } = await http.get('/users/me')
         this.user = data
       } catch (error) {
-        this.logout()
+        if (logoutOnError) {
+          this.logout()
+        }
       }
     },
 

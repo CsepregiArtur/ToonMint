@@ -9,6 +9,18 @@
 | Parole | BCrypt (`PasswordEncoder`) |
 | Sesiuni | stateless — filtrul JWT populează `SecurityContext` la fiecare cerere |
 | Roluri | `USER`, `ADMIN`; `@EnableMethodSecurity` disponibil pentru reguli viitoare |
+| Verificare email | cod OTP de 6 cifre, obligatoriu înainte de primul login |
+| Resetare parolă | cod OTP de 6 cifre, single-use |
+
+Codurile OTP (`verification_codes`):
+
+- generate cu `SecureRandom` și stocate **doar** ca hash BCrypt — un dump al bazei nu
+  dezvăluie coduri;
+- expiră după 15 minute, acceptă maximum 5 încercări, apoi sunt invalidate;
+- un cod nou poate fi cerut după 60 de secunde; cererile sunt limitate și pe email, și pe IP;
+- răspunsurile pentru `resend-verification` și `forgot-password` sunt identice pentru
+  adrese existente și inexistente (fără enumerare de utilizatori);
+- confirmarea unui cod de resetare marchează adresa ca verificată (dovada accesului la email).
 
 Reguli de acces (`SecurityConfig`):
 
@@ -54,8 +66,8 @@ Autorizarea la nivel de obiect este explicită în servicii:
 
 - Trial-ul este limitat de `guest_trials.email` (UNIQUE) și de rate limiting per email
   și per IP. Nu este o barieră anti-fraudă completă: o persoană cu multe adrese poate
-  obține mai multe imagini. Pentru lansare publică se recomandă verificarea emailului
-  sau un captcha.
+  obține mai multe imagini. Conturile propriu-zise folosesc verificare de email cu cod
+  OTP; pentru trial (fără cont) se recomandă suplimentar un captcha.
 - `publicId` (UUID v4) este singurul „token” al unui job de trial: nu este ghicibil, dar
   nici revocabil. Expiră practic odată cu cache-ul imaginii (10 minute).
 - Joburile de trial nu au utilizator; ele apar în consola de operator cu `guestEmail`
@@ -101,12 +113,13 @@ Autorizarea la nivel de obiect este explicită în servicii:
 
 ## 7. Limitări cunoscute și pași următori
 
-- Nu există încă resetare de parolă / verificare email; pentru lansare publică este
-  necesar un flux de confirmare.
 - Tokenurile nu au revocare individuală (logout = ștergerea tokenului din client).
-  Pentru revocare, introdu o versiune de token per utilizator sau o listă de revocare.
-- Rate limiting-ul este per utilizator autentificat; endpoint-urile publice
-  (`/api/auth/login`) nu au limitare separată — recomandat să adaugi un bucket pe IP.
+  Resetarea parolei **nu** invalidează JWT-urile deja emise: ele rămân valide până la
+  expirare (24h). Pentru revocare, introdu o versiune de token per utilizator.
+- `POST /api/auth/login` nu are limitare separată pe IP (există doar rate limiting pe
+  cont la generare); recomandat un bucket pe IP pentru protecție la brute-force.
+- Codurile OTP sunt protejate prin expirare (15 min), 5 încercări și cooldown de 60s,
+  dar nu există captcha; pentru trafic abuziv se recomandă unul.
 - Imaginea originală nu este stocată, deci nu poate fi auditată conținutul după fapt.
 - Adresele din `guest_trials` sunt date personale: păstrează doar emailul și momentul, iar
   la cerere șterge rândul (nu este folosit în alt scop decât limitarea trial-ului).

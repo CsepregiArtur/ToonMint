@@ -33,6 +33,9 @@ app:
     max-entries: 100
   ai:
     provider: stub
+  finance:
+    reporting-currency: USD
+    cost-per-generation: 0.034
   mail:
     enabled: false
     from: no-reply@toonmint.test

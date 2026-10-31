@@ -51,6 +51,10 @@ app:
   jwt:
     secret: ${JWT_SECRET:dev-only-secret-change-me-please-0123456789}
     ttl: PT24H
+  legal:
+    # Versiunea documentelor legale. Trebuie să corespundă cu cea folosită la
+    # build-ul frontendului (`LEGAL_TERMS_VERSION` din .env, citit de vite.config.js).
+    terms-version: ${LEGAL_TERMS_VERSION:2026-10-31}
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}
   jobs:
@@ -344,10 +348,21 @@ app:
     enabled: ${MAIL_ENABLED:false}
     from: ${MAIL_USERNAME:no-reply@toonmint.local}
     from-name: ${MAIL_FROM_NAME:ToonMint}
+  finance:
+    # Moneda în care se raportează toate sumele.
+    reporting-currency: ${FINANCE_REPORTING_CURRENCY:USD}
+    # Costul estimat al unei imagini generate, folosit ca EXPENSE la fiecare job finalizat.
+    cost-per-generation: ${FINANCE_COST_PER_GENERATION:0.034}
+    # Cursuri opționale către moneda de raportare (ex. `EUR: 1.08`).
+    # Se pot seta și prin mediu: APP_FINANCE_FX_RATES_EUR=1.08.
+    fx-rates: {}
   revenuecat:
     webhook-auth-token: ${REVENUECAT_WEBHOOK_AUTH_TOKEN:}
     purchase-link-base-url: ${REVENUECAT_PURCHASE_LINK_URL:}
     entitlement-id: ${REVENUECAT_ENTITLEMENT_ID:pro}
+    # `package-id` este identificatorul pachetului din offering (RevenueCat →
+    # Offerings). Dacă e completat, linkul de checkout deschide direct produsul;
+    # dacă e gol, utilizatorul alege din toate pachetele offering-ului.
     products:
       - id: toonmint_weekly_499
         kind: SUBSCRIPTION
@@ -355,17 +370,20 @@ app:
         credits: 50
         label: Weekly plan (50 generations)
         price: $4.99 / week
+        package-id: "$rc_weekly"
       - id: toonmint_yearly_2499
         kind: SUBSCRIPTION
         subscription-type: YEARLY
         credits: 300
         label: Yearly plan (300 generations)
         price: $24.99 / year
+        package-id: "$rc_annual"
       - id: toonmint_credits_20
         kind: CREDIT_PACK
         credits: 20
         label: 20 extra generations
         price: $1.99
+        package-id: "credits_20"
   admin:
     email: ${ADMIN_EMAIL:}
     password: ${ADMIN_PASSWORD:}

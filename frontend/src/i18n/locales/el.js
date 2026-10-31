@@ -1,0 +1,58 @@
+export default {
+  'common.language': 'Γλώσσα',
+  'common.credits': { one: '{count} μονάδα', other: '{count} μονάδες' },
+  'nav.studio': 'Στούντιο',
+  'nav.credits': 'Μονάδες',
+  'nav.admin': 'Διαχείριση',
+  'nav.logout': 'Αποσύνδεση',
+  'nav.login': 'Σύνδεση',
+  'footer.tagline':
+    'ToonMint · οι φωτογραφίες επεξεργάζονται προσωρινά (έως 10 λεπτά) και δεν αποθηκεύονται ποτέ μόνιμα · πληρωμές μέσω RevenueCat',
+  'footer.cookieSettings': 'Ρυθμίσεις cookies',
+  'legal.privacy': 'Απόρρητο',
+  'legal.cookies': 'Cookies',
+  'legal.terms': 'Όροι χρήσης',
+  'legal.licenses': 'Άδειες',
+  'consent.text':
+    'Χρησιμοποιούμε αυστηρά απαραίτητα cookies για να λειτουργεί ο λογαριασμός σας. Με τη συγκατάθεσή σας ενεργοποιούμε επίσης αναλυτικά (Google Analytics, Microsoft Clarity) και, όπου ισχύει, διαφημίσεις (Google AdSense). Δεν πουλάμε ποτέ τα δεδομένα σας.',
+  'consent.customize': 'Προσαρμογή',
+  'consent.reject': 'Μόνο τα απαραίτητα',
+  'consent.accept': 'Αποδοχή όλων',
+  'consent.modal.title': 'Ρυθμίσεις cookies',
+  'consent.modal.desc':
+    'Μπορείτε να αλλάξετε αυτές τις επιλογές οποτεδήποτε. Έκδοση εγγράφων: {version}. Λεπτομέρειες στην',
+  'consent.modal.policy': 'πολιτική cookies',
+  'consent.modal.necessary': 'Αυστηρά απαραίτητα',
+  'consent.modal.necessaryText':
+    'Η συνδεδεμένη συνεδρία σας (toonmint.token) και αυτή η επιλογή. Δεν μπορούν να απενεργοποιηθούν.',
+  'consent.modal.always': 'Πάντα ενεργά',
+  'consent.modal.analytics': 'Αναλυτικά',
+  'consent.modal.analyticsText':
+    'Google Analytics 4 και Microsoft Clarity: σελίδες που επισκεφθήκατε, heatmaps, σφάλματα. Μας βοηθούν να βελτιώσουμε τον ιστότοπο.',
+  'consent.modal.ads': 'Διαφημίσεις',
+  'consent.modal.adsText':
+    'Google AdSense: διαφημίσεις, συμπεριλαμβανομένων εξατομικευμένων, και η μέτρησή τους. Χωρίς συγκατάθεση το σενάριο διαφημίσεων δεν φορτώνεται καθόλου.',
+  'consent.modal.withdraw': 'Ανάκληση όλων',
+  'consent.modal.save': 'Αποθήκευση προτιμήσεων',
+  'landing.eyebrow': '✨ ToonMint · το AI στούντιό σου',
+  'landing.title': 'Μετέτρεψε οποιαδήποτε φωτογραφία σε τέχνη toon',
+  'landing.subtitle':
+    'Ανέβασε μια φωτογραφία, διάλεξε στυλ και πάρε τη σχεδιασμένη εκδοχή σε λιγότερο από δύο λεπτά. Η πρώτη εικόνα είναι δωρεάν — χωρίς λογαριασμό, μόνο με email.',
+  'landing.try': 'Δοκίμασε δωρεάν',
+  'landing.continue': 'Συνέχισε στο στούντιο',
+  'landing.fact.free': '1 δωρεάν εικόνα ανά email',
+  'landing.fact.noStore': 'Οι φωτογραφίες δεν αποθηκεύονται ποτέ μόνιμα',
+  'landing.fact.preview': 'Δες τα στυλ πριν επιλέξεις',
+  'landing.badge.photo': 'Δείγμα φωτογραφίας',
+  'landing.slider.ready': 'Πραγματικό παράδειγμα · σύρε τη λαβή για να δεις την αλλαγή.',
+  'landing.slider.pending': 'Δες τα στυλ παρακάτω και δοκίμασε δωρεάν.',
+  'landing.gallery.title': 'Βρες το στυλ που σου ταιριάζει',
+  'landing.gallery.cta': 'Διάλεξε στυλ',
+  'auth.tabLogin': 'Σύνδεση',
+  'auth.tabRegister': 'Δημιουργία λογαριασμού',
+  'auth.email': 'Email',
+  'auth.password': 'Κωδικός',
+  'auth.login': 'Σύνδεση',
+  'auth.register': 'Δημιουργία λογαριασμού',
+  'auth.processing': 'Επεξεργασία…'
+}

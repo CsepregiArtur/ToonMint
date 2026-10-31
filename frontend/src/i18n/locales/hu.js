@@ -1,0 +1,58 @@
+export default {
+  'common.language': 'Nyelv',
+  'common.credits': { one: '{count} kredit', other: '{count} kredit' },
+  'nav.studio': 'Stúdió',
+  'nav.credits': 'Kreditek',
+  'nav.admin': 'Admin',
+  'nav.logout': 'Kilépés',
+  'nav.login': 'Bejelentkezés',
+  'footer.tagline':
+    'ToonMint · a fotókat ideiglenesen dolgozzuk fel (max. 10 perc), soha nem tároljuk tartósan · fizetés a RevenueCaten keresztül',
+  'footer.cookieSettings': 'Cookie-beállítások',
+  'legal.privacy': 'Adatvédelem',
+  'legal.cookies': 'Cookie-k',
+  'legal.terms': 'Felhasználási feltételek',
+  'legal.licenses': 'Licencek',
+  'consent.text':
+    'Csak a fiók működéséhez szükséges cookie-kat használunk. Az Ön hozzájárulásával elemzést (Google Analytics, Microsoft Clarity) és adott esetben hirdetéseket (Google AdSense) is engedélyezünk. Adatokat soha nem adunk el.',
+  'consent.customize': 'Testreszabás',
+  'consent.reject': 'Csak a szükségesek',
+  'consent.accept': 'Összes elfogadása',
+  'consent.modal.title': 'Cookie-beállítások',
+  'consent.modal.desc':
+    'Ezeket a beállításokat bármikor módosíthatja. Dokumentumverzió: {version}. Részletek a',
+  'consent.modal.policy': 'cookie-szabályzatban',
+  'consent.modal.necessary': 'Feltétlenül szükségesek',
+  'consent.modal.necessaryText':
+    'A bejelentkezett munkamenet (toonmint.token) és ez a választás. Nem kapcsolhatók ki.',
+  'consent.modal.always': 'Mindig aktív',
+  'consent.modal.analytics': 'Elemzés',
+  'consent.modal.analyticsText':
+    'Google Analytics 4 és Microsoft Clarity: meglátogatott oldalak, hőtérképek, hibák. Segít a webhely fejlesztésében.',
+  'consent.modal.ads': 'Hirdetések',
+  'consent.modal.adsText':
+    'Google AdSense: hirdetések, beleértve a személyre szabottakat, és ezek mérése. Hozzájárulás nélkül a hirdetési szkript egyáltalán nem töltődik be.',
+  'consent.modal.withdraw': 'Összes visszavonása',
+  'consent.modal.save': 'Beállítások mentése',
+  'landing.eyebrow': '✨ ToonMint · a te AI műhelyed',
+  'landing.title': 'Alakíts bármilyen fotót toon művészetté',
+  'landing.subtitle':
+    'Tölts fel egy fotót, válassz stílust, és két percen belül megkapod a rajzolt változatot. Az első kép ingyenes — fiók nélkül, csak e-mail-címmel.',
+  'landing.try': 'Ingyenes kipróbálás',
+  'landing.continue': 'Folytatás a stúdióban',
+  'landing.fact.free': '1 ingyenes kép e-mail-címenként',
+  'landing.fact.noStore': 'A fotókat soha nem tároljuk tartósan',
+  'landing.fact.preview': 'Nézd meg a stílusokat választás előtt',
+  'landing.badge.photo': 'Minta fotó',
+  'landing.slider.ready': 'Valódi példa · húzd a csúszkát a változáshoz.',
+  'landing.slider.pending': 'Nézd meg a lenti stílusokat, és próbáld ki ingyen.',
+  'landing.gallery.title': 'Találd meg a hozzád illő stílust',
+  'landing.gallery.cta': 'Stílus választása',
+  'auth.tabLogin': 'Bejelentkezés',
+  'auth.tabRegister': 'Fiók létrehozása',
+  'auth.email': 'E-mail',
+  'auth.password': 'Jelszó',
+  'auth.login': 'Belépés',
+  'auth.register': 'Fiók létrehozása',
+  'auth.processing': 'Feldolgozás…'
+}

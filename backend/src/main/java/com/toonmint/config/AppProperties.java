@@ -3,8 +3,10 @@ package com.toonmint.config;
 import com.toonmint.domain.SubscriptionType;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
+import java.math.BigDecimal;
 import java.time.Duration;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 /**
@@ -14,6 +16,7 @@ import java.util.Map;
 @ConfigurationProperties(prefix = "app")
 public record AppProperties(
         Jwt jwt,
+        Legal legal,
         Cors cors,
         Jobs jobs,
         RateLimit rateLimit,
@@ -22,13 +25,22 @@ public record AppProperties(
         Mail mail,
         RevenueCat revenueCat,
         Admin admin,
-        Demo demo
+        Demo demo,
+        Finance finance
 ) {
 
     /**
      * Configurația tokenului JWT: secretul de semnare și durata de valabilitate.
      */
     public record Jwt(String secret, Duration ttl) {
+    }
+
+    /**
+     * Versiunea documentelor legale acceptată de aplicație. Se compară cu versiunea
+     * trimisă de client, ca să nu se poată înregistra un consimțământ pentru un text
+     * care nu mai este publicat.
+     */
+    public record Legal(String termsVersion) {
     }
 
     /**
@@ -113,6 +125,33 @@ public record AppProperties(
     }
 
     /**
+     * Bookkeeping: moneda de raportare, costul AI per generare și cursurile de
+     * schimb folosite pentru sumele încasate în alte monede.
+     */
+    public record Finance(String reportingCurrency,
+                          BigDecimal costPerGeneration,
+                          Map<String, BigDecimal> fxRates) {
+
+        /**
+         * Normalizează valorile lipsă, ca raportul să nu depindă de config complet.
+         */
+        public Finance {
+            reportingCurrency = reportingCurrency == null || reportingCurrency.isBlank()
+                    ? "USD" : reportingCurrency.trim().toUpperCase(Locale.ROOT);
+            costPerGeneration = costPerGeneration == null
+                    ? new BigDecimal("0.034") : costPerGeneration;
+            fxRates = fxRates == null ? Map.of() : Map.copyOf(fxRates);
+        }
+
+        /**
+         * Valorile implicite, folosite dacă grupul `app.finance` lipsește.
+         */
+        public static Finance defaults() {
+            return new Finance(null, null, null);
+        }
+    }
+
+    /**
      * Integrarea RevenueCat: token de webhook, link de checkout și catalogul de produse.
      */
     public record RevenueCat(String webhookAuthToken,
@@ -130,13 +169,17 @@ public record AppProperties(
 
         /**
          * Un produs RevenueCat mapat pe credite și/sau tip de abonament.
+         *
+         * <p>`packageId` este identificatorul pachetului din offering-ul RevenueCat;
+         * dacă e completat, linkul de checkout deschide direct produsul respectiv.
          */
         public record Product(String id,
                               ProductKind kind,
                               SubscriptionType subscriptionType,
                               Integer credits,
                               String label,
-                              String price) {
+                              String price,
+                              String packageId) {
         }
     }
 }

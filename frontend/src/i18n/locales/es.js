@@ -1,0 +1,58 @@
+export default {
+  'common.language': 'Idioma',
+  'common.credits': { one: '{count} crédito', other: '{count} créditos' },
+  'nav.studio': 'Estudio',
+  'nav.credits': 'Créditos',
+  'nav.admin': 'Admin',
+  'nav.logout': 'Salir',
+  'nav.login': 'Iniciar sesión',
+  'footer.tagline':
+    'ToonMint · fotos procesadas temporalmente (máx. 10 minutos), nunca almacenadas de forma permanente · pagos con RevenueCat',
+  'footer.cookieSettings': 'Configuración de cookies',
+  'legal.privacy': 'Privacidad',
+  'legal.cookies': 'Cookies',
+  'legal.terms': 'Términos y condiciones',
+  'legal.licenses': 'Licencias',
+  'consent.text':
+    'Usamos cookies estrictamente necesarias para que tu cuenta funcione. Con tu consentimiento también activamos analítica (Google Analytics, Microsoft Clarity) y, cuando corresponde, publicidad (Google AdSense). Nunca vendemos tus datos.',
+  'consent.customize': 'Personalizar',
+  'consent.reject': 'Solo esenciales',
+  'consent.accept': 'Aceptar todo',
+  'consent.modal.title': 'Configuración de cookies',
+  'consent.modal.desc':
+    'Puedes cambiar estas opciones en cualquier momento. Versión de los documentos: {version}. Detalles en la',
+  'consent.modal.policy': 'política de cookies',
+  'consent.modal.necessary': 'Estrictamente necesarias',
+  'consent.modal.necessaryText':
+    'Tu sesión iniciada (toonmint.token) y esta elección. No se pueden desactivar.',
+  'consent.modal.always': 'Siempre activas',
+  'consent.modal.analytics': 'Analítica',
+  'consent.modal.analyticsText':
+    'Google Analytics 4 y Microsoft Clarity: páginas visitadas, mapas de calor, errores. Nos ayuda a mejorar el sitio.',
+  'consent.modal.ads': 'Publicidad',
+  'consent.modal.adsText':
+    'Google AdSense: anuncios, incluidos los personalizados, y su medición. Sin consentimiento, el script de publicidad no se carga en absoluto.',
+  'consent.modal.withdraw': 'Retirar todo',
+  'consent.modal.save': 'Guardar preferencias',
+  'landing.eyebrow': '✨ ToonMint · tu estudio de IA',
+  'landing.title': 'Convierte cualquier foto en arte toon',
+  'landing.subtitle':
+    'Sube una foto, elige un estilo y recibe la versión dibujada en menos de dos minutos. La primera imagen es gratis: sin cuenta, solo un correo electrónico.',
+  'landing.try': 'Probar gratis',
+  'landing.continue': 'Continuar en el estudio',
+  'landing.fact.free': '1 imagen gratis por correo',
+  'landing.fact.noStore': 'Las fotos nunca se almacenan de forma permanente',
+  'landing.fact.preview': 'Previsualiza los estilos antes de elegir',
+  'landing.badge.photo': 'Foto de ejemplo',
+  'landing.slider.ready': 'Ejemplo real · arrastra el control para ver la transformación.',
+  'landing.slider.pending': 'Mira los estilos de abajo y pruébalo gratis.',
+  'landing.gallery.title': 'Encuentra el estilo que encaja contigo',
+  'landing.gallery.cta': 'Elegir un estilo',
+  'auth.tabLogin': 'Iniciar sesión',
+  'auth.tabRegister': 'Crear cuenta',
+  'auth.email': 'Correo electrónico',
+  'auth.password': 'Contraseña',
+  'auth.login': 'Entrar',
+  'auth.register': 'Crear la cuenta',
+  'auth.processing': 'Procesando…'
+}

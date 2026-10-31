@@ -1,0 +1,58 @@
+export default {
+  'common.language': 'Taal',
+  'common.credits': { one: '{count} credit', other: '{count} credits' },
+  'nav.studio': 'Studio',
+  'nav.credits': 'Credits',
+  'nav.admin': 'Beheer',
+  'nav.logout': 'Uitloggen',
+  'nav.login': 'Inloggen',
+  'footer.tagline':
+    'ToonMint · foto’s worden tijdelijk verwerkt (max. 10 minuten), nooit permanent opgeslagen · betalingen via RevenueCat',
+  'footer.cookieSettings': 'Cookie-instellingen',
+  'legal.privacy': 'Privacy',
+  'legal.cookies': 'Cookies',
+  'legal.terms': 'Voorwaarden',
+  'legal.licenses': 'Licenties',
+  'consent.text':
+    'Wij gebruiken strikt noodzakelijke cookies zodat je account werkt. Met jouw toestemming activeren we ook analyse (Google Analytics, Microsoft Clarity) en waar van toepassing advertenties (Google AdSense). Wij verkopen je gegevens nooit.',
+  'consent.customize': 'Aanpassen',
+  'consent.reject': 'Alleen noodzakelijk',
+  'consent.accept': 'Alles accepteren',
+  'consent.modal.title': 'Cookie-instellingen',
+  'consent.modal.desc':
+    'Je kunt deze opties altijd wijzigen. Documentversie: {version}. Details in het',
+  'consent.modal.policy': 'cookiebeleid',
+  'consent.modal.necessary': 'Strikt noodzakelijk',
+  'consent.modal.necessaryText':
+    'Je ingelogde sessie (toonmint.token) en deze keuze. Ze kunnen niet worden uitgeschakeld.',
+  'consent.modal.always': 'Altijd actief',
+  'consent.modal.analytics': 'Analyse',
+  'consent.modal.analyticsText':
+    'Google Analytics 4 en Microsoft Clarity: bezochte pagina’s, heatmaps, fouten. Zo kunnen we de site verbeteren.',
+  'consent.modal.ads': 'Advertenties',
+  'consent.modal.adsText':
+    'Google AdSense: advertenties, ook gepersonaliseerde, en de meting daarvan. Zonder toestemming wordt het advertentiescript helemaal niet geladen.',
+  'consent.modal.withdraw': 'Alles intrekken',
+  'consent.modal.save': 'Voorkeuren opslaan',
+  'landing.eyebrow': '✨ ToonMint · jouw AI-atelier',
+  'landing.title': 'Maak van elke foto toonkunst',
+  'landing.subtitle':
+    'Upload een foto, kies een stijl en krijg de getekende versie binnen twee minuten. Je eerste afbeelding is gratis — zonder account, alleen een e-mailadres.',
+  'landing.try': 'Gratis proberen',
+  'landing.continue': 'Verder in de studio',
+  'landing.fact.free': '1 gratis afbeelding per e-mailadres',
+  'landing.fact.noStore': 'Foto’s worden nooit permanent opgeslagen',
+  'landing.fact.preview': 'Bekijk de stijlen voordat je kiest',
+  'landing.badge.photo': 'Voorbeeldfoto',
+  'landing.slider.ready': 'Echt voorbeeld · sleep de schuif om de transformatie te zien.',
+  'landing.slider.pending': 'Bekijk de stijlen hieronder en probeer het gratis.',
+  'landing.gallery.title': 'Vind de stijl die bij je past',
+  'landing.gallery.cta': 'Kies een stijl',
+  'auth.tabLogin': 'Inloggen',
+  'auth.tabRegister': 'Account aanmaken',
+  'auth.email': 'E-mailadres',
+  'auth.password': 'Wachtwoord',
+  'auth.login': 'Inloggen',
+  'auth.register': 'Account aanmaken',
+  'auth.processing': 'Bezig…'
+}

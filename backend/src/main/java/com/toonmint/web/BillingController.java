@@ -7,9 +7,12 @@ import com.toonmint.service.CreditQueryService;
 import com.toonmint.web.dto.BillingCatalogResponse;
 import com.toonmint.web.dto.CreditPackResponse;
 import com.toonmint.web.dto.PageResponse;
+import com.toonmint.web.dto.PurchaseAcknowledgementRequest;
+import com.toonmint.web.dto.PurchaseAcknowledgementResponse;
 import com.toonmint.web.dto.TransactionResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -90,6 +93,17 @@ public class BillingController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         return creditQueryService.history(userId, page, size, currentUser.require());
+    }
+
+    /**
+     * Salvează confirmarea cerută înainte de checkout: livrare imediată + renunțare la
+     * dreptul de retragere de 14 zile (OUG 34/2014 art. 16 lit. m).
+     */
+    @PostMapping("/billing/acknowledgements")
+    @Operation(summary = "Record the immediate-delivery acknowledgement before checkout")
+    public PurchaseAcknowledgementResponse acknowledge(@Valid @RequestBody PurchaseAcknowledgementRequest request,
+                                                       HttpServletRequest httpRequest) {
+        return billingService.acknowledge(currentUser.require(), request, ClientIp.of(httpRequest));
     }
 
     /**

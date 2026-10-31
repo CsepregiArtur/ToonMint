@@ -4,6 +4,8 @@ import LandingView from './views/LandingView.vue'
 import StudioView from './views/StudioView.vue'
 import CreditsView from './views/CreditsView.vue'
 import AdminView from './views/AdminView.vue'
+import AccountView from './views/AccountView.vue'
+import LegalView from './views/LegalView.vue'
 import { useAuthStore } from './stores/auth'
 
 // Rutele aplicației. Prima pagină este publică (demonstrație + generare gratuită),
@@ -11,8 +13,18 @@ import { useAuthStore } from './stores/auth'
 const routes = [
   { path: '/', name: 'landing', component: LandingView, meta: { public: true } },
   { path: '/login', name: 'login', component: LoginView, meta: { public: true } },
+  // Paginile legale trebuie să fie accesibile fără cont (cerință GDPR + comerț electronic).
+  {
+    path: '/legal/:doc(confidentialitate|cookies|termeni|licente)',
+    name: 'legal',
+    component: LegalView,
+    meta: { public: true }
+  },
+  { path: '/confidentialitate', redirect: '/legal/confidentialitate' },
+  { path: '/termeni', redirect: '/legal/termeni' },
   { path: '/studio', name: 'studio', component: StudioView },
   { path: '/credits', name: 'credits', component: CreditsView },
+  { path: '/cont', name: 'account', component: AccountView },
   { path: '/admin', name: 'admin', component: AdminView, meta: { admin: true } }
 ]
 

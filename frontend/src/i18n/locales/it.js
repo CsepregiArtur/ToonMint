@@ -1,0 +1,58 @@
+export default {
+  'common.language': 'Lingua',
+  'common.credits': { one: '{count} credito', other: '{count} crediti' },
+  'nav.studio': 'Studio',
+  'nav.credits': 'Crediti',
+  'nav.admin': 'Admin',
+  'nav.logout': 'Esci',
+  'nav.login': 'Accedi',
+  'footer.tagline':
+    'ToonMint · foto elaborate temporaneamente (max 10 minuti), mai conservate in modo permanente · pagamenti tramite RevenueCat',
+  'footer.cookieSettings': 'Impostazioni cookie',
+  'legal.privacy': 'Privacy',
+  'legal.cookies': 'Cookie',
+  'legal.terms': 'Termini e condizioni',
+  'legal.licenses': 'Licenze',
+  'consent.text':
+    'Usiamo cookie strettamente necessari al funzionamento dell’account. Con il tuo consenso attiviamo anche analisi (Google Analytics, Microsoft Clarity) ed eventualmente pubblicità (Google AdSense). Non vendiamo mai i tuoi dati.',
+  'consent.customize': 'Personalizza',
+  'consent.reject': 'Solo essenziali',
+  'consent.accept': 'Accetta tutto',
+  'consent.modal.title': 'Impostazioni cookie',
+  'consent.modal.desc':
+    'Puoi modificare queste opzioni in qualsiasi momento. Versione dei documenti: {version}. Dettagli nella',
+  'consent.modal.policy': 'cookie policy',
+  'consent.modal.necessary': 'Strettamente necessari',
+  'consent.modal.necessaryText':
+    'La sessione autenticata (toonmint.token) e questa scelta. Non possono essere disattivati.',
+  'consent.modal.always': 'Sempre attivi',
+  'consent.modal.analytics': 'Analisi',
+  'consent.modal.analyticsText':
+    'Google Analytics 4 e Microsoft Clarity: pagine viste, heatmap, errori. Ci aiutano a migliorare il sito.',
+  'consent.modal.ads': 'Pubblicità',
+  'consent.modal.adsText':
+    'Google AdSense: annunci, anche personalizzati, e la loro misurazione. Senza consenso lo script pubblicitario non viene caricato affatto.',
+  'consent.modal.withdraw': 'Revoca tutto',
+  'consent.modal.save': 'Salva le preferenze',
+  'landing.eyebrow': '✨ ToonMint · il tuo atelier IA',
+  'landing.title': 'Trasforma qualsiasi foto in arte toon',
+  'landing.subtitle':
+    'Carica una foto, scegli uno stile e ricevi la versione disegnata in meno di due minuti. La prima immagine è gratuita: senza account, basta un indirizzo email.',
+  'landing.try': 'Prova gratis',
+  'landing.continue': 'Continua nello studio',
+  'landing.fact.free': '1 immagine gratuita per email',
+  'landing.fact.noStore': 'Le foto non vengono mai conservate in modo permanente',
+  'landing.fact.preview': 'Guarda gli stili prima di scegliere',
+  'landing.badge.photo': 'Foto di esempio',
+  'landing.slider.ready': 'Esempio reale · trascina il cursore per vedere la trasformazione.',
+  'landing.slider.pending': 'Guarda gli stili qui sotto e prova gratis.',
+  'landing.gallery.title': 'Trova lo stile che fa per te',
+  'landing.gallery.cta': 'Scegli uno stile',
+  'auth.tabLogin': 'Accedi',
+  'auth.tabRegister': 'Crea un account',
+  'auth.email': 'Email',
+  'auth.password': 'Password',
+  'auth.login': 'Entra',
+  'auth.register': 'Crea l’account',
+  'auth.processing': 'Elaborazione…'
+}

@@ -1,0 +1,58 @@
+export default {
+  'common.language': 'Dil',
+  'common.credits': { one: '{count} kredi', other: '{count} kredi' },
+  'nav.studio': 'Stüdyo',
+  'nav.credits': 'Krediler',
+  'nav.admin': 'Yönetim',
+  'nav.logout': 'Çıkış yap',
+  'nav.login': 'Giriş yap',
+  'footer.tagline':
+    'ToonMint · fotoğraflar geçici olarak işlenir (en fazla 10 dakika), kalıcı olarak saklanmaz · ödemeler RevenueCat üzerinden',
+  'footer.cookieSettings': 'Çerez ayarları',
+  'legal.privacy': 'Gizlilik',
+  'legal.cookies': 'Çerezler',
+  'legal.terms': 'Kullanım koşulları',
+  'legal.licenses': 'Lisanslar',
+  'consent.text':
+    'Hesabınızın çalışması için zorunlu çerezler kullanıyoruz. Onayınızla birlikte analiz (Google Analytics, Microsoft Clarity) ve uygun olduğunda reklam (Google AdSense) araçlarını da etkinleştiriyoruz. Verilerinizi asla satmayız.',
+  'consent.customize': 'Özelleştir',
+  'consent.reject': 'Yalnızca zorunlu',
+  'consent.accept': 'Tümünü kabul et',
+  'consent.modal.title': 'Çerez ayarları',
+  'consent.modal.desc':
+    'Bu seçenekleri istediğiniz zaman değiştirebilirsiniz. Belge sürümü: {version}. Ayrıntılar',
+  'consent.modal.policy': 'çerez politikasında',
+  'consent.modal.necessary': 'Zorunlu',
+  'consent.modal.necessaryText':
+    'Oturum açmış oturumunuz (toonmint.token) ve bu seçim. Devre dışı bırakılamaz.',
+  'consent.modal.always': 'Her zaman etkin',
+  'consent.modal.analytics': 'Analiz',
+  'consent.modal.analyticsText':
+    'Google Analytics 4 ve Microsoft Clarity: ziyaret edilen sayfalar, ısı haritaları, hatalar. Siteyi geliştirmemize yardımcı olur.',
+  'consent.modal.ads': 'Reklam',
+  'consent.modal.adsText':
+    'Google AdSense: kişiselleştirilmiş olanlar dahil reklamlar ve ölçümleri. Onay olmadan reklam betiği hiç yüklenmez.',
+  'consent.modal.withdraw': 'Tümünü geri çek',
+  'consent.modal.save': 'Tercihleri kaydet',
+  'landing.eyebrow': '✨ ToonMint · senin AI atölyen',
+  'landing.title': 'Herhangi bir fotoğrafı toon sanatına dönüştür',
+  'landing.subtitle':
+    'Bir fotoğraf yükle, stil seç ve çizilmiş hâlini iki dakikadan kısa sürede al. İlk görsel ücretsiz — hesap yok, sadece e-posta adresi.',
+  'landing.try': 'Ücretsiz dene',
+  'landing.continue': 'Stüdyoda devam et',
+  'landing.fact.free': 'E-posta başına 1 ücretsiz görsel',
+  'landing.fact.noStore': 'Fotoğraflar asla kalıcı olarak saklanmaz',
+  'landing.fact.preview': 'Seçmeden önce stilleri önizle',
+  'landing.badge.photo': 'Örnek fotoğraf',
+  'landing.slider.ready': 'Gerçek örnek · dönüşümü görmek için sürükleyin.',
+  'landing.slider.pending': 'Aşağıdaki stillere göz at ve ücretsiz dene.',
+  'landing.gallery.title': 'Sana uygun stili bul',
+  'landing.gallery.cta': 'Stil seç',
+  'auth.tabLogin': 'Giriş yap',
+  'auth.tabRegister': 'Hesap oluştur',
+  'auth.email': 'E-posta',
+  'auth.password': 'Şifre',
+  'auth.login': 'Giriş yap',
+  'auth.register': 'Hesap oluştur',
+  'auth.processing': 'İşleniyor…'
+}

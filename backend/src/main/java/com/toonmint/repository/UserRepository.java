@@ -28,6 +28,12 @@ public interface UserRepository extends JpaRepository<User, Long> {
     boolean existsByEmailIgnoreCase(String email);
 
     /**
+     * Verifică dacă un cont există și nu a fost șters (folosit la validarea tokenului:
+     * un cont anonimizat nu mai poate folosi un JWT emis înainte de ștergere).
+     */
+    boolean existsByIdAndDeletedAtIsNull(Long id);
+
+    /**
      * Serializează modificările de credite pentru un utilizator. Orice schimbare de
      * sold trebuie să treacă prin acest lock, ca cererile concurente să nu poată
      * cheltui mai mult decât există în sold.

@@ -148,12 +148,13 @@ limitare de 1000 cereri/minut, `app.jobs.threads=1`.
 
 ## 5. Teste
 
-Suita are 36 de teste de integrare (`@SpringBootTest` + `MockMvc`) care acoperă
+Suita are 56 de teste de integrare (`@SpringBootTest` + `MockMvc`) care acoperă
 fluxurile complete:
 
 | Clasă | Acoperă |
 |---|---|
-| `AuthAndUserApiTest` | register/login, email duplicat, acces anonim, izolare între utilizatori, actualizare profil |
+| `AuthAndUserApiTest` | register → cod → verify → login, login blocat înainte de confirmare, email duplicat, acces anonim, izolare între utilizatori, actualizare profil |
+| `EmailVerificationApiTest` | cod greșit, limită de 5 încercări, cooldown la retrimitere, fără enumerare de adrese, resetare parolă și cod single-use |
 | `JobApiTest` | ciclu complet multipart (upload → COMPLETED → download → ștergere), upload base64, stil invalid, fișier non-imagine |
 | `CreditsApiTest` | `402` fără credite, catalog RevenueCat, link de cumpărare, respingerea produselor de tip abonament |
 | `RevenueCatWebhookTest` | abonament, pachet de credite, expirare, refund, token invalid, produs necunoscut, **idempotență** |
@@ -163,6 +164,7 @@ fluxurile complete:
 | `GuestTrialApiTest` | generare anonimă, blocarea celei de-a doua cereri, eligibilitate, email invalid, job inexistent |
 | `DemoLoginApiTest` | disponibilitate, token utilizabil, rol `ADMIN` |
 | `StyleCatalogTest` | cel puțin 20 de stiluri, etichete unice, prompturi ne-goale, `previewUrl` pentru fiecare, endpoint public |
+| `FinanceApiTest` | cost AI per generare finalizată, încasare din webhook (cu fallback pe eticheta de preț), comision + refund, idempotență la replay, cheltuieli manuale, acces doar pentru operator |
 
 Rulare țintită:
 

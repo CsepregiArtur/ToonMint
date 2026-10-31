@@ -67,7 +67,27 @@ Limite și reguli implementate:
 - fiecare mesaj este trimis individual, astfel încât un destinatar invalid să nu
   blocheze restul; eșecurile sunt raportate în `failures`.
 
-## 4. Limitări Gmail
+## 4. Emailuri tranzacționale: coduri OTP
+
+Aplicația trimite automat coduri de 6 cifre pentru:
+
+- confirmarea adresei de email după înregistrare (`EMAIL_VERIFICATION`);
+- resetarea parolei (`PASSWORD_RESET`).
+
+Reguli implementate în `VerificationCodeService` / `EmailVerificationMailer`:
+
+- codul expiră în **15 minute** și poate fi folosit o singură dată;
+- maximum **5 încercări greșite** per cod, apoi codul este invalidat;
+- un cod nou se poate cere după **60 de secunde** (`429 CODE_COOLDOWN`);
+- codurile sunt stocate doar ca hash BCrypt în `verification_codes`, niciodată în clar;
+- emailurile cu coduri **nu** sunt salvate în `email_messages` (ar însemna coduri în clar în DB);
+- livrarea are loc după commit-ul tranzacției, ca să nu plece coduri pentru tranzacții anulate.
+
+Când `MAIL_ENABLED=false` (dezvoltare), emailul nu pleacă: codul apare în logul
+backendului ca `WARN` (`... code for user@example.com is 123456`), deci fluxul poate fi
+testat local fără SMTP.
+
+## 5. Limitări Gmail
 
 | Cont | Limita orientativă |
 |---|---|
@@ -78,7 +98,7 @@ Pentru campanii mari, recomandarea este un provider tranzacțional (SendGrid, Ma
 Amazon SES) sau Google Workspace cu un domeniu propriu. Schimbarea se face doar prin
 configurație (`MAIL_HOST`, `MAIL_PORT`, credențiale) — codul nu depinde de Gmail.
 
-## 5. Probleme frecvente
+## 6. Probleme frecvente
 
 | Eroare | Cauză | Soluție |
 |---|---|---|
@@ -88,7 +108,7 @@ configurație (`MAIL_HOST`, `MAIL_PORT`, credențiale) — codul nu depinde de G
 | Timeout la trimitere | rețea/firewall blochează 587 | permite ieșirea pe 587 sau folosește 465 + SSL |
 | `MAIL_ENABLED=false` și nu pleacă nimic | mod simulat | setează `MAIL_ENABLED=true` |
 
-## 6. Securitate
+## 7. Securitate
 
 - Nu comite niciodată parola de aplicație: `.env` este în `.gitignore`.
 - Revocă parola de aplicație din contul Google dacă este expusă; nu afectează parola

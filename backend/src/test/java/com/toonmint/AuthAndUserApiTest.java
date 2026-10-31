@@ -21,18 +21,24 @@ class AuthAndUserApiTest extends ApiTestSupport {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(registerBody))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.token").isNotEmpty())
-                .andExpect(jsonPath("$.user.email").value(email))
-                .andExpect(jsonPath("$.user.creditBalance").value(0));
+                .andExpect(jsonPath("$.verificationRequired").value(true))
+                .andExpect(jsonPath("$.email").value(email))
+                .andExpect(jsonPath("$.token").doesNotExist());
 
         String loginBody = objectMapper.writeValueAsString(new LoginPayload(email, "sup3r-secret-pass"));
-        String loginResponse = mockMvc.perform(post("/api/auth/login")
+        mockMvc.perform(post("/api/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(loginBody))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("EMAIL_NOT_VERIFIED"));
+
+        String token = verifyEmailAndGetToken(email, verificationMail.code(email));
+
+        mockMvc.perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(loginBody))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.user.displayName").value("Ada"))
-                .andReturn().getResponse().getContentAsString();
-        String token = objectMapper.readTree(loginResponse).path("token").asText();
+                .andExpect(jsonPath("$.user.displayName").value("Ada"));
 
         mockMvc.perform(get("/api/users/me").header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())

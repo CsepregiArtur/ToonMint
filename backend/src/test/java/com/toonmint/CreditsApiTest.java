@@ -33,14 +33,30 @@ class CreditsApiTest extends ApiTestSupport {
                 .andExpect(jsonPath("$.configured").value(true))
                 .andExpect(jsonPath("$.plans.length()").value(2))
                 .andExpect(jsonPath("$.packs.length()").value(1))
-                .andExpect(jsonPath("$.packs[0].purchaseUrl").value(org.hamcrest.Matchers.containsString(
-                        "app_user_id=")));
+                .andExpect(jsonPath("$.packs[0].purchaseUrl").value(org.hamcrest.Matchers.startsWith(
+                        "https://pay.rev.cat/test-link/")));
     }
 
     @Test
     void purchaseReturnsCheckoutLinkForCreditPacks() throws Exception {
         String token = registerAndGetToken(uniqueEmail("buy"));
         String body = "{\"packId\":\"toonmint_credits_20\"}";
+
+        // Fără confirmarea de la checkout, linkul nu se generează (OUG 34/2014 art. 16 lit. m).
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .post("/api/credits/purchase")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType("application/json")
+                        .content(body))
+                .andExpect(status().isPreconditionRequired())
+                .andExpect(jsonPath("$.code").value("ACKNOWLEDGEMENT_REQUIRED"));
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .post("/api/billing/acknowledgements")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType("application/json")
+                        .content("{\"productId\":\"toonmint_credits_20\",\"termsVersion\":\"2026-10-31\"}"))
+                .andExpect(status().isOk());
 
         mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
                         .post("/api/credits/purchase")
@@ -49,8 +65,8 @@ class CreditsApiTest extends ApiTestSupport {
                         .content(body))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.credits").value(20))
-                .andExpect(jsonPath("$.purchaseUrl").value(org.hamcrest.Matchers.containsString(
-                        "product_id=toonmint_credits_20")));
+                .andExpect(jsonPath("$.purchaseUrl").value(org.hamcrest.Matchers.startsWith(
+                        "https://pay.rev.cat/test-link/")));
     }
 
     @Test

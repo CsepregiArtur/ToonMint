@@ -4,6 +4,7 @@ import { useTrialStore } from '../stores/trial'
 import BeforeAfterSlider from './BeforeAfterSlider.vue'
 import StylePicker from './StylePicker.vue'
 import http from '../api/client'
+import { t } from '../i18n'
 
 // Fluxul gratuit: email + fotografie + stil → o imagine toon, fără cont.
 const trial = useTrialStore()
@@ -18,6 +19,13 @@ const eligibility = ref(null)
 
 // Stilul selectat, folosit pe buton.
 const selectedStyle = computed(() => styles.value.find((style) => style.id === trial.styleId))
+const signupTarget = computed(() => ({
+  path: '/login',
+  query: {
+    mode: 'register',
+    redirect: `/studio?style=${encodeURIComponent(trial.styleId || '')}`
+  }
+}))
 
 // Previzualizarea afișată: fișierul ales sau imaginea deja trimisă (după o eroare).
 const previewSrc = computed(() => previewUrl.value || trial.beforeUrl)
@@ -39,11 +47,21 @@ function onFileChange(event) {
     return
   }
   if (!['image/png', 'image/jpeg', 'image/webp'].includes(selected.type)) {
-    localError.value = 'Sunt acceptate doar imagini PNG, JPEG sau WEBP.'
+    localError.value = t('studio.errType')
+    trial.releaseUrls()
+    if (previewUrl.value) URL.revokeObjectURL(previewUrl.value)
+    previewUrl.value = ''
+    file.value = null
+    event.target.value = ''
     return
   }
   if (selected.size > 10 * 1024 * 1024) {
-    localError.value = 'Imaginea trebuie să aibă cel mult 10 MB.'
+    localError.value = t('studio.errSize')
+    trial.releaseUrls()
+    if (previewUrl.value) URL.revokeObjectURL(previewUrl.value)
+    previewUrl.value = ''
+    file.value = null
+    event.target.value = ''
     return
   }
   if (previewUrl.value) {
@@ -57,15 +75,15 @@ function onFileChange(event) {
 async function submit() {
   localError.value = ''
   if (!email.value.includes('@')) {
-    localError.value = 'Introdu o adresă de email validă.'
+    localError.value = t('trial.needEmail')
     return
   }
   if (!file.value) {
-    localError.value = 'Alege o fotografie.'
+    localError.value = t('studio.errNoFile')
     return
   }
   if (!trial.styleId) {
-    localError.value = 'Alege un stil.'
+    localError.value = t('studio.errNoStyle')
     return
   }
   try {
@@ -99,7 +117,7 @@ onMounted(async () => {
       trial.styleId = data[0].id
     }
   } catch (error) {
-    localError.value = 'Stilurile nu au putut fi încărcate.'
+    localError.value = t('trial.stylesFailed')
   }
 })
 
@@ -116,46 +134,47 @@ onBeforeUnmount(() => {
   <section id="incearca" class="card trial-card">
     <header class="card-header">
       <div>
-        <h2>Încearcă gratuit, fără cont</h2>
-        <p class="muted">
-          Prima imagine este gratuită. Ai nevoie doar de o adresă de email, ca să știm că ai folosit-o.
-        </p>
+        <h2>{{ t('trial.title') }}</h2>
+        <p class="muted">{{ t('trial.subtitle') }}</p>
       </div>
-      <span class="trial-pill">1 imagine gratuită</span>
+      <span class="trial-pill">{{ t('trial.badge') }}</span>
     </header>
 
     <div v-if="trial.step === 'done'" class="result">
       <BeforeAfterSlider
         :before="trial.beforeUrl"
         :after="trial.afterUrl"
-        before-label="Fotografia ta"
+        :before-label="t('trial.before')"
         after-label="Toon"
         :initial="55"
       />
       <div class="result-actions">
-        <button class="btn primary" @click="trial.download()">Descarcă imaginea</button>
-        <button class="btn ghost" @click="startOver">Altă fotografie</button>
+        <button class="btn primary" @click="trial.download()">{{ t('trial.download') }}</button>
+        <button class="btn ghost" @click="startOver">{{ t('trial.another') }}</button>
       </div>
       <div class="upsell">
         <div>
-          <strong>Vrei mai multe?</strong>
-          <p class="muted small">
-            Creează un cont și alege un abonament (50 de imagini/săptămână) sau cumpără credite extra.
-          </p>
+          <strong>{{ t('trial.moreTitle') }}</strong>
+          <p class="muted small">{{ t('trial.moreText') }}</p>
         </div>
         <div class="row">
-          <router-link class="btn primary" to="/login?mode=register">Creează cont</router-link>
-          <router-link class="btn ghost" to="/login">Am deja cont</router-link>
+          <router-link class="btn primary" :to="signupTarget">{{ t('trial.signup') }}</router-link>
+          <router-link class="btn ghost" to="/login">{{ t('trial.haveAccount') }}</router-link>
         </div>
       </div>
     </div>
 
     <div v-else-if="trial.busy" class="trial-busy">
       <div class="spinner" aria-hidden="true"></div>
-      <p>
-        {{ trial.step === 'uploading' ? 'Se trimite fotografia…' : 'Desenăm varianta toon…' }}
-      </p>
-      <p class="muted small">Durează de obicei câteva secunde.</p>
+      <p class="busy-title">{{ trial.step === 'uploading' ? t('trial.busyUpload') : t('trial.busyProcess') }}</p>
+      <ol class="generation-steps" aria-live="polite">
+        <li class="complete">{{ t('trial.step1') }}</li>
+        <li :class="{ complete: trial.step === 'processing', current: trial.step === 'uploading' }">{{ t('trial.step2') }}</li>
+        <li :class="{ current: trial.step === 'processing' }">
+          {{ t('trial.step3', { style: selectedStyle?.label || 'toon' }) }}
+        </li>
+      </ol>
+      <p class="muted small">{{ t('trial.wait') }}</p>
     </div>
 
     <form v-else class="trial-form" @submit.prevent="submit">
@@ -164,36 +183,38 @@ onBeforeUnmount(() => {
           ref="fileInput"
           type="file"
           accept="image/png,image/jpeg,image/webp"
-          hidden
+          class="file-input"
           @change="onFileChange"
         />
-        <img v-if="previewSrc" :src="previewSrc" alt="Previzualizare" />
+        <img v-if="previewSrc" :src="previewSrc" :alt="t('trial.previewAlt')" />
+        <div v-if="previewSrc" class="preview-replace">{{ t('trial.replace') }}</div>
         <div v-else class="dropzone-placeholder">
           <span class="dropzone-icon">＋</span>
-          <strong>Alege fotografia</strong>
-          <span class="muted small">PNG, JPEG sau WEBP · max 10 MB</span>
+          <strong>{{ t('trial.choosePhoto') }}</strong>
+          <span class="muted small">{{ t('trial.format') }}</span>
         </div>
       </label>
 
       <div class="trial-fields">
         <label class="field">
-          <span>Adresa de email</span>
+          <span>{{ t('trial.emailLabel') }}</span>
           <input
             v-model.trim="email"
             type="email"
             autocomplete="email"
-            placeholder="tu@exemplu.com"
+            placeholder="you@example.com"
             required
             @blur="checkEmail"
           />
         </label>
         <p v-if="eligibility === false" class="error small">
-          Această adresă a folosit deja imaginea gratuită.
-          <router-link to="/login?mode=register">Creează un cont</router-link> pentru a continua.
+          {{ t('trial.used') }}
+          <router-link :to="signupTarget">{{ t('trial.createAccount') }}</router-link>
+          
         </p>
 
         <div class="field">
-          <span>Stil ({{ styles.length }} disponibile)</span>
+          <span>{{ t('trial.styleLabel', { count: styles.length }) }}</span>
           <StylePicker v-model="trial.styleId" :styles="styles" />
         </div>
 
@@ -202,10 +223,8 @@ onBeforeUnmount(() => {
         </p>
 
         <div v-if="trial.trialUsed" class="upsell inline">
-          <p class="muted small">
-            Generarea gratuită a fost folosită. Alege un abonament sau cumpără credite.
-          </p>
-          <router-link class="btn primary" to="/login?mode=register">Continuă cu un cont</router-link>
+          <p class="muted small">{{ t('trial.usedUpsell') }}</p>
+          <router-link class="btn primary" :to="signupTarget">{{ t('trial.continueAccount') }}</router-link>
         </div>
 
         <button
@@ -213,11 +232,17 @@ onBeforeUnmount(() => {
           class="btn primary wide"
           :disabled="trial.busy || eligibility === false"
         >
-          Generează gratuit{{ selectedStyle ? ' · ' + selectedStyle.label : '' }}
+          {{ selectedStyle ? t('trial.generateIn', { style: selectedStyle.label }) : t('trial.generate') }}
         </button>
 
-        <p class="muted small">
-          Nu păstrăm fotografia: imaginea este procesată și ștearsă automat după 10 minute.
+        <p class="muted small">{{ t('trial.privacy') }}</p>
+
+        <p class="muted small legal-hint">
+          {{ t('trial.consent') }}
+          <router-link to="/legal/confidentialitate" target="_blank">{{ t('legal.privacy') }}</router-link>
+          ·
+          <router-link to="/legal/termeni" target="_blank">{{ t('legal.terms') }}</router-link>.
+          {{ t('trial.consentAfter') }}
         </p>
       </div>
     </form>

@@ -3,12 +3,16 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useJobsStore } from '../stores/jobs'
 import StylePicker from './StylePicker.vue'
 import { useAuthStore } from '../stores/auth'
+import { useCreditsStore } from '../stores/credits'
+import { t } from '../i18n'
 
 // Evenimentul `created` anunță pagina părinte că un job nou a fost trimis.
 const emit = defineEmits(['created'])
+const props = defineProps({ initialStyle: { type: String, default: '' } })
 
 const jobsStore = useJobsStore()
 const auth = useAuthStore()
+const creditsStore = useCreditsStore()
 
 const file = ref(null)
 const previewUrl = ref('')
@@ -33,11 +37,13 @@ function onFileChange(event) {
     return
   }
   if (!['image/png', 'image/jpeg', 'image/webp'].includes(selected.type)) {
-    error.value = 'Sunt acceptate doar imagini PNG, JPEG sau WEBP.'
+    error.value = t('studio.errType')
+    clearSelection()
     return
   }
   if (selected.size > 10 * 1024 * 1024) {
-    error.value = 'Imaginea trebuie să aibă cel mult 10 MB.'
+    error.value = t('studio.errSize')
+    clearSelection()
     return
   }
   if (previewUrl.value) {
@@ -63,11 +69,11 @@ function clearSelection() {
 async function submit() {
   error.value = ''
   if (!file.value) {
-    error.value = 'Alege o fotografie mai întâi.'
+    error.value = t('studio.errNoFile')
     return
   }
   if (!styleId.value) {
-    error.value = 'Alege un stil.'
+    error.value = t('studio.errNoStyle')
     return
   }
   busy.value = true
@@ -86,9 +92,11 @@ async function submit() {
 
 // Lansăm încărcarea stilurilor când componenta apare în pagină.
 onMounted(async () => {
-  await jobsStore.loadStyles()
+  await Promise.all([jobsStore.loadStyles(), creditsStore.loadCatalog()])
   if (!styleId.value && jobsStore.styles.length > 0) {
-    styleId.value = jobsStore.styles[0].id
+    styleId.value = jobsStore.styles.some((style) => style.id === props.initialStyle)
+      ? props.initialStyle
+      : jobsStore.styles[0].id
   }
 })
 
@@ -104,10 +112,10 @@ onBeforeUnmount(() => {
   <section class="card uploader">
     <header class="card-header">
       <div>
-        <h2>Transformă o fotografie</h2>
-        <p class="muted">Încarcă o poză, alege stilul și primești varianta cartoon în câteva secunde.</p>
+        <h2>{{ t('studio.uploadTitle') }}</h2>
+      <p class="muted">{{ t('studio.uploadSubtitle') }}</p>
       </div>
-      <span class="credit-pill" :class="{ empty: !hasCredits }">{{ auth.credits }} credite</span>
+      <span class="credit-pill" :class="{ empty: !hasCredits }">{{ t('common.credits', { count: auth.credits }) }}</span>
     </header>
 
     <div class="uploader-body">
@@ -116,35 +124,40 @@ onBeforeUnmount(() => {
           ref="fileInput"
           type="file"
           accept="image/png,image/jpeg,image/webp"
-          hidden
+          class="file-input"
           @change="onFileChange"
         />
-        <img v-if="previewUrl" :src="previewUrl" alt="Previzualizare" />
+        <img v-if="previewUrl" :src="previewUrl" :alt="t('studio.previewAlt')" />
         <div v-else class="dropzone-placeholder">
           <span class="dropzone-icon">＋</span>
-          <strong>Alege o fotografie</strong>
-          <span class="muted">PNG, JPEG sau WEBP · max 10 MB</span>
+          <strong>{{ t('studio.choosePhoto') }}</strong>
+          <span class="muted">{{ t('studio.format') }}</span>
         </div>
       </label>
 
       <div class="uploader-controls">
         <div class="field">
-          <span>Stil ({{ jobsStore.styles.length }} disponibile)</span>
+          <span>{{ t('studio.style', { count: jobsStore.styles.length }) }}</span>
           <StylePicker v-model="styleId" :styles="jobsStore.styles" />
         </div>
 
-        <p class="hint">Fiecare generare consumă 1 credit. Dacă AI-ul eșuează, creditul se returnează automat.</p>
+        <p class="hint">{{ t('studio.hint') }}</p>
 
         <p v-if="error" class="error">{{ error }}</p>
-        <p v-if="!hasCredits" class="error">
-          Nu mai ai credite. Mergi la <router-link to="/credits">Credite</router-link> pentru a cumpăra.
-        </p>
+        <div v-if="!hasCredits" class="no-credit-offer">
+          <p class="error">{{ t('studio.noCredits') }}</p>
+          <div v-for="product in [...creditsStore.catalog.plans, ...creditsStore.catalog.packs].slice(0, 2)" :key="product.id" class="no-credit-product">
+            <span><strong>{{ product.label }}</strong><small>{{ product.price }} · {{ product.credits }}</small></span>
+            <router-link class="btn ghost small" to="/credits">{{ t('studio.see') }}</router-link>
+          </div>
+          <router-link class="credit-link" to="/credits">{{ t('studio.seeAll') }}</router-link>
+        </div>
 
         <div class="actions">
           <button class="btn primary" :disabled="busy || !hasCredits" @click="submit">
-            {{ busy ? 'Se generează…' : `Generează${selectedStyle ? ' · ' + selectedStyle.label : ''}` }}
+            {{ busy ? t('studio.generating') : (selectedStyle ? t('studio.generateIn', { style: selectedStyle.label }) : t('studio.generate')) }}
           </button>
-          <button v-if="file" class="btn ghost" :disabled="busy" @click="clearSelection">Renunță</button>
+          <button v-if="file" class="btn ghost" :disabled="busy" @click="clearSelection">{{ t('studio.cancel') }}</button>
         </div>
       </div>
     </div>

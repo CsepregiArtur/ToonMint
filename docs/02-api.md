@@ -52,32 +52,83 @@ Endpoint-urile de listare acceptă `page` (0-based) și `size` (max 100) și ret
 
 ## 2. Autentificare
 
+Contul se creează în doi pași: `register` trimite un cod OTP pe email, iar
+`verify-email` confirmă adresa și abia atunci emite tokenul JWT. Fără confirmare,
+`login` răspunde cu `403 EMAIL_NOT_VERIFIED`.
+
 ### `POST /api/auth/register`
 
 ```json
-{ "email": "ana@example.com", "password": "parola-mea-lunga", "displayName": "Ana" }
+{
+  "email": "ana@example.com",
+  "password": "parola-mea-lunga",
+  "displayName": "Ana",
+  "acceptedTerms": true,
+  "termsVersion": "2026-10-31"
+}
 ```
 
-`201 Created`
+`acceptedTerms` și `termsVersion` sunt **obligatorii**: versiunea acceptată se salvează
+în `users.terms_version`, împreună cu `terms_accepted_at` — dovada consimțământului
+(GDPR art. 7(1)). Valoarea `termsVersion` este `SITE.docVersion` din frontend.
+
+`201 Created` — **nu** returnează token; se trimite un cod de 6 cifre pe email.
 
 ```json
 {
-  "token": "eyJhbGciOiJIUzI1NiJ9...",
-  "expiresAt": "2026-10-31T19:30:00Z",
-  "user": {
-    "id": 1,
-    "publicId": "0b1f2f7e-6b0e-4e9f-9d55-0a1b2c3d4e5f",
-    "email": "ana@example.com",
-    "displayName": "Ana",
-    "creditBalance": 0,
-    "subscriptionType": "FREE",
-    "subscriptionActive": false,
-    "subscriptionExpiresAt": null,
-    "role": "USER",
-    "createdAt": "2026-10-30T19:30:00Z"
-  }
+  "email": "ana@example.com",
+  "verificationRequired": true,
+  "codeExpiresInSeconds": 900,
+  "resendAvailableInSeconds": 60
 }
 ```
+
+Erori: `409 EMAIL_TAKEN` dacă adresa are deja cont, `400 TERMS_NOT_ACCEPTED` dacă nu s-au
+acceptat termenii, `409 TERMS_VERSION_OUTDATED` dacă versiunea trimisă nu mai este cea
+publicată (răspunsul conține `details.currentVersion`), `429` la depășirea rate limit-ului.
+
+### `POST /api/auth/verify-email`
+
+```json
+{ "email": "ana@example.com", "code": "123456" }
+```
+
+`200 OK` cu `AuthResponse` (token + profil), identic cu răspunsul de la login.
+`400 INVALID_CODE` dacă codul e greșit, expirat (15 minute), consumat sau are deja
+5 încercări greșite.
+
+### `POST /api/auth/resend-verification`
+
+```json
+{ "email": "ana@example.com" }
+```
+
+`202 Accepted` cu `{ "sent": true, "resendAvailableInSeconds": 60 }`. Răspunsul este
+identic pentru adresele fără cont (fără enumerare de utilizatori); un cod nou se emite
+doar dacă adresa are cont neconfirmat. `429 CODE_COOLDOWN` dacă ultimul cod a fost
+trimis cu mai puțin de 60 de secunde în urmă (detalii: `retryAfterSeconds`).
+
+### `POST /api/auth/forgot-password`
+
+```json
+{ "email": "ana@example.com" }
+```
+
+`202 Accepted`, răspuns identic indiferent dacă adresa are cont. Trimite un cod de
+resetare valabil 15 minute.
+
+### `POST /api/auth/reset-password`
+
+```json
+{ "email": "ana@example.com", "code": "123456", "newPassword": "parola-noua-lunga" }
+```
+
+`200 OK` cu `AuthResponse` (utilizatorul este autentificat imediat). Codul este
+single-use, iar confirmarea lui marchează adresa ca verificată. `400 INVALID_CODE` la
+cod greșit/expirat.
+
+> Tokenurile JWT emise înainte de resetarea parolei rămân valide până la expirare
+> (24h) — proiectul folosește JWT stateless, fără revocare pe server.
 
 ### `POST /api/auth/login`
 
@@ -85,7 +136,8 @@ Endpoint-urile de listare acceptă `page` (0-based) și `size` (max 100) și ret
 { "email": "ana@example.com", "password": "parola-mea-lunga" }
 ```
 
-Returnează același format ca la register. `401 INVALID_CREDENTIALS` la date greșite.
+`200 OK` cu `AuthResponse`. `401 INVALID_CREDENTIALS` la date greșite,
+`403 EMAIL_NOT_VERIFIED` dacă adresa nu a fost confirmată (detalii: `email`).
 
 ### Login demo (doar în dezvoltare)
 
@@ -98,6 +150,7 @@ același `AuthResponse` ca la login. Endpoint-ul nu există când `app.demo.enab
 ### `POST /api/users`
 
 Creează un utilizator (echivalentul public al înregistrării), fără a emite token.
+Trimite și codul de verificare pe email; contul se activează prin `/api/auth/verify-email`.
 `201 Created` cu `UserResponse`.
 
 ## 2b. Generare gratuită (fără cont)
@@ -152,12 +205,23 @@ Imaginea generată, cât timp mai există în cache (TTL 10 minute).
 | `PUT` | `/api/users/{id}` | proprietar/operator | actualizare `displayName` / `email` |
 | `GET` | `/api/users/{userId}/jobs?status=&page=&size=` | proprietar/operator | **custom query**: job-urile unui utilizator, filtrabile după status |
 | `GET` | `/api/users/{userId}/transactions?page=&size=` | proprietar/operator | istoricul de credite al utilizatorului |
+| `GET` | `/api/users/me/export` | autentificat | **export complet JSON** (GDPR art. 20): profil, consimțământ, joburi, tranzacții, confirmări de checkout |
+| `DELETE` | `/api/users/me` | autentificat | **ștergerea contului** (GDPR art. 17): anonimizare + ștergerea joburilor și codurilor; `204 No Content` |
 
 Exemplu `PUT /api/users/1`:
 
 ```json
 { "displayName": "Ana Maria", "email": "ana.maria@example.com" }
 ```
+
+### `DELETE /api/users/me` — ce se întâmplă concret
+
+1. se șterg trialurile gratuite ale adresei, codurile OTP și joburile utilizatorului;
+2. tranzacțiile de credite rămân (obligație contabilă, 10 ani / Legea 82/1991), dar li se
+   golește referința către job;
+3. rândul din `users` este **anonimizat**: email `deleted-<publicId>@deleted.invalid`,
+   parolă aleatorie, nume și credite golite, `deleted_at` setat;
+4. tokenurile JWT emise anterior nu mai sunt acceptate (filtrul verifică `deleted_at`).
 
 ## 4. Stiluri
 
@@ -351,7 +415,7 @@ Utilizatorii obișnuiți văd doar propriile job-uri.
       "label": "Weekly plan (50 generations)",
       "price": "$4.99 / week",
       "credits": 50,
-      "purchaseUrl": "https://pay.rev.cat/abc123?app_user_id=...&product_id=toonmint_weekly_499"
+      "purchaseUrl": "https://pay.rev.cat/abc123/<public_id>?package_id=<package-id>"
     }
   ],
   "packs": [
@@ -361,11 +425,25 @@ Utilizatorii obișnuiți văd doar propriile job-uri.
       "label": "20 extra generations",
       "price": "$1.99",
       "credits": 20,
-      "purchaseUrl": "https://pay.rev.cat/abc123?app_user_id=...&product_id=toonmint_credits_20"
+      "purchaseUrl": "https://pay.rev.cat/abc123/<public_id>?package_id=<package-id>"
     }
   ]
 }
 ```
+
+### `POST /api/billing/acknowledgements`
+
+Confirmarea cerută **înainte de checkout**: „solicit livrarea imediată și accept că pierd
+dreptul de retragere de 14 zile” (OUG 34/2014 art. 16 lit. m).
+
+```json
+{ "productId": "toonmint_credits_20", "termsVersion": "2026-10-31" }
+```
+
+`200 OK` → `{ "productId": ..., "immediateDelivery": true, "withdrawalWaived": true, "acceptedAt": ... }`
+
+Confirmarea se păstrează în `purchase_acknowledgements` (utilizator, IP, versiune,
+moment) și apare în exportul de date, ca dovadă pentru consumator.
 
 ### `POST /api/credits/purchase`
 
@@ -375,7 +453,9 @@ Utilizatorii obișnuiți văd doar propriile job-uri.
 
 Returnează `CreditPackResponse` cu `purchaseUrl`. Creditele sunt acordate **numai**
 după ce RevenueCat trimite webhook-ul `NON_RENEWING_PURCHASE`.
-Dacă `REVENUECAT_PURCHASE_LINK_URL` nu este setat → `503 PAYMENTS_NOT_CONFIGURED`.
+Dacă lipsește o confirmare din ultimele 30 de minute pentru produsul cerut →
+`428 ACKNOWLEDGEMENT_REQUIRED`. Dacă `REVENUECAT_PURCHASE_LINK_URL` nu este setat →
+`503 PAYMENTS_NOT_CONFIGURED`.
 
 ### `GET /api/credits/transactions?page=&size=`
 
@@ -480,13 +560,119 @@ scrie ca `<style-id>.jpg` în folderul servit de frontend.
 
 Ultimele webhook-uri primite, cu statusul procesării — util la depanare.
 
+### `GET /api/admin/finance/summary?from=2026-10-01T00:00:00Z&to=2026-11-01T00:00:00Z`
+
+Raportul de profitabilitate al intervalului. `from` și `to` sunt obligatorii (ISO-8601),
+iar `from` trebuie să fie înainte de `to`.
+
+```json
+{
+  "from": "2026-10-01T00:00:00Z",
+  "to": "2026-11-01T00:00:00Z",
+  "currency": "USD",
+  "grossRevenue": 148.7200,
+  "refunds": 4.9900,
+  "storeFees": 44.6200,
+  "netRevenue": 99.1100,
+  "aiCost": 41.2070,
+  "otherCost": 12.0000,
+  "grossMargin": 57.9030,
+  "netProfit": 45.9030,
+  "marginRatio": 0.5842,
+  "generations": 1212,
+  "costPerGeneration": 0.0340,
+  "revenueByProduct": [
+    { "productId": "toonmint_weekly_499", "amount": 99.8000, "sales": 20 }
+  ],
+  "monthly": [
+    {
+      "month": "2026-10",
+      "grossRevenue": 148.7200,
+      "refunds": 4.9900,
+      "storeFees": 44.6200,
+      "netRevenue": 99.1100,
+      "aiCost": 41.2070,
+      "otherCost": 12.0000,
+      "grossMargin": 57.9030,
+      "netProfit": 45.9030
+    }
+  ]
+}
+```
+
+Semnificația fiecărei cifre și modul de calcul: [10 – Bookkeeping](10-finante.md).
+
+### `GET /api/admin/finance/entries?category=&from=&to=&page=&size=`
+
+Registrul de intrări, cele mai noi primele. Toți parametrii sunt opționali; `category`
+acceptă valorile din `SALE`, `OTHER_INCOME`, `REFUND`, `STORE_FEE`, `AI_GENERATION`,
+`HOSTING`, `DOMAIN`, `MARKETING`, `OTHER`.
+
+```json
+{
+  "items": [
+    {
+      "id": 42,
+      "kind": "EXPENSE",
+      "category": "AI_GENERATION",
+      "amount": 0.0340,
+      "currency": "USD",
+      "fxRate": 1.000000,
+      "amountReporting": 0.0340,
+      "source": "AUTO_JOB",
+      "referenceType": "JOB",
+      "referenceKey": "981",
+      "productId": null,
+      "description": "Generation (anime_v1)",
+      "occurredAt": "2026-10-31T13:12:04Z",
+      "createdAt": "2026-10-31T13:12:04Z"
+    }
+  ],
+  "page": 0,
+  "size": 50,
+  "totalItems": 1,
+  "totalPages": 1,
+  "hasNext": false
+}
+```
+
+### `POST /api/admin/finance/entries`
+
+Înregistrează o cheltuială sau un venit introdus manual. Direcția este dedusă din
+categorie (`SALE`/`OTHER_INCOME` = încasare, restul = cheltuială), deci nu se trimite.
+
+```json
+{
+  "category": "HOSTING",
+  "amount": 12.50,
+  "currency": "USD",
+  "description": "VPS octombrie",
+  "occurredAt": "2026-10-31T00:00:00Z"
+}
+```
+
+`201 Created` cu intrarea creată (`source = MANUAL`). `currency` și `occurredAt` sunt
+opționale (implicit: moneda de raportare, respectiv momentul cererii).
+`400 VALIDATION_ERROR` dacă suma lipsește sau nu este pozitivă.
+
+### `DELETE /api/admin/finance/entries/{id}`
+
+`204 No Content`. Doar intrările `MANUAL` pot fi șterse; pentru cele automate răspunsul
+este `400 BAD_REQUEST` (sunt dovezi ale unor evenimente reale), iar pentru un id
+inexistent `404 NOT_FOUND`.
+
 ## 9. Exemple rapide
 
 ```bash
-# înregistrare + token
-TOKEN=$(curl -s -X POST http://localhost:8080/api/auth/register \
+# înregistrare (trimite codul pe email; în dev codul apare în logul backendului)
+curl -s -X POST http://localhost:8080/api/auth/register \
   -H 'Content-Type: application/json' \
-  -d '{"email":"demo@example.com","password":"parola-demo-123","displayName":"Demo"}' \
+  -d '{"email":"demo@example.com","password":"parola-demo-123","displayName":"Demo"}'
+
+# confirmare email + token (înlocuiește 123456 cu codul din email/log)
+TOKEN=$(curl -s -X POST http://localhost:8080/api/auth/verify-email \
+  -H 'Content-Type: application/json' \
+  -d '{"email":"demo@example.com","code":"123456"}' \
   | python3 -c 'import sys,json;print(json.load(sys.stdin)["token"])')
 
 # acordare manuală de credite în dezvoltare (SQL, profil dev H2)

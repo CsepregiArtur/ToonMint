@@ -104,6 +104,7 @@ class StylePreviewServiceTest {
         }
         return new AppProperties(
                 new AppProperties.Jwt("0123456789012345678901234567890123", Duration.ofHours(1)),
+                new AppProperties.Legal("2026-10-31"),
                 new AppProperties.Cors(List.of("http://localhost:5173")),
                 new AppProperties.Jobs(1, 1, 10_485_760, 1024,
                         "/demo/styles", outputDir.toString(), source.toString(), 0L, 64, 64, styles),
@@ -114,7 +115,8 @@ class StylePreviewServiceTest {
                 new AppProperties.Mail(false, "no-reply@test", "Test"),
                 new AppProperties.RevenueCat("", "", "pro", List.of()),
                 new AppProperties.Admin("", ""),
-                new AppProperties.Demo(false, "d@test", "p", 0, "a@test", "p", 0));
+                new AppProperties.Demo(false, "d@test", "p", 0, "a@test", "p", 0),
+                AppProperties.Finance.defaults());
     }
 
     /**

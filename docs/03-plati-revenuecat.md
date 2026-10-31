@@ -7,7 +7,7 @@ Backendul **nu** procesează carduri și **nu** emite credite înainte de confir
 ## 1. Modelul de integrare
 
 ```text
-Vue / KMP ──POST /api/credits/purchase──► Backend ──► link pay.rev.cat?app_user_id=<UUID>
+Vue / KMP ──POST /api/credits/purchase──► Backend ──► link pay.rev.cat/<token>/<UUID>
      │                                                        │
      └──────────────── checkout găzduit de RevenueCat ───────┘
                               │ plată confirmată
@@ -40,8 +40,13 @@ Astfel, pentru același cont, webhook-urile din web și din aplicație ajung la 
 
 3. Creează entitlement-ul **`pro`** și atașează-i cele două abonamente.
 4. Creează oferta `default` cu pachete pentru cele trei produse.
-5. Pentru web: creează un **Web Purchase Link** către oferta de credite și copiază
-   URL-ul (`https://pay.rev.cat/...`).
+5. Pentru web: creează un **Web Purchase Link** către offering și copiază URL-ul
+   de producție (`https://pay.rev.cat/<token>`). Backendul adaugă el app user id
+   în path, deci nu lipi linkul complet în configurație decât dacă folosești
+   placeholder-ul `{app_user_id}`.
+6. (Opțional, recomandat) Notează **package id**-ul fiecărui pachet din offering
+   (RevenueCat → Offerings → package) și pune-l în `package-id` mai jos: atunci
+   linkul deschide direct produsul cerut, nu pagina cu toate pachetele.
 
 ## 3. Configurare backend
 
@@ -52,6 +57,18 @@ REVENUECAT_WEBHOOK_AUTH_TOKEN=<token lung, aleator>
 REVENUECAT_PURCHASE_LINK_URL=https://pay.rev.cat/<link-id>
 REVENUECAT_ENTITLEMENT_ID=pro
 ```
+
+`REVENUECAT_PURCHASE_LINK_URL` este **doar baza** linkului (fără query string).
+Acceptă trei forme, în această ordine de prioritate:
+
+| Configurație | Link generat |
+|---|---|
+| `https://pay.rev.cat/<token>` | `https://pay.rev.cat/<token>/<public_id>` |
+| `https://pay.rev.cat/<token>/{app_user_id}` | placeholder-ul este înlocuit cu `<public_id>` |
+| link complet care conține deja `app_user_id=` | folosit ca atare |
+
+Dacă produsul are `package-id`, se adaugă `?package_id=<id>` ca să fie
+preselectat pachetul corect.
 
 Maparea produs → credite/abonament se face în `application.yml`:
 
@@ -66,18 +83,23 @@ app:
         kind: SUBSCRIPTION
         subscription-type: WEEKLY
         credits: 50
+        package-id: $rc_custom_weekly
       - id: toonmint_yearly_2499
         kind: SUBSCRIPTION
         subscription-type: YEARLY
         credits: 300
+        package-id: $rc_custom_yearly
       - id: toonmint_credits_20
         kind: CREDIT_PACK
         credits: 20
+        package-id: $rc_custom_credits
 ```
 
 - Dacă un produs lipsește din listă, webhook-ul este marcat `IGNORED`.
 - Dacă `REVENUECAT_PURCHASE_LINK_URL` lipsește, `POST /api/credits/purchase`
   răspunde `503 PAYMENTS_NOT_CONFIGURED`, iar catalogul returnează `configured=false`.
+- Dacă `package-id` lipsește, linkul deschide pagina de selecție a pachetelor, iar
+  utilizatorul poate cumpăra alt produs decât cel pe care a apăsat.
 
 ## 4. Configurare webhook
 
@@ -109,6 +131,11 @@ oricărei cereri fără potrivire. Dacă tokenul nu este configurat, răspunde `
 | `TEST` | `IGNORED` (util la verificarea webhook-ului) |
 
 Orice alt tip este salvat și marcat `IGNORED`, fără efect.
+
+Fiecare plată (`INITIAL_PURCHASE`, `RENEWAL`, `PRODUCT_CHANGE`, `NON_RENEWING_PURCHASE`)
+este înregistrată și în registrul financiar ca `INCOME / SALE`; `REFUND` devine o
+cheltuială. Suma vine din `event.price`, cu fallback pe eticheta `price` a produsului
+din configurație. Detalii: [10 – Bookkeeping](10-finante.md).
 
 ## 6. Idempotență și siguranță
 
@@ -187,3 +214,24 @@ Backendul rămâne neschimbat: primește aceleași webhook-uri și actualizează
 - **Reconciliere**: creditele pot fi verificate cu `SUM(amount)` din
   `credit_transactions` față de `users.credit_balance` (vezi
   [05 – Credite și rate limiting](05-credite-si-rate-limiting.md)).
+
+## 10. Confirmarea plății în interfață
+
+Frontendul nu așteaptă ca utilizatorul să apese „Reîmprospătează". După ce
+checkout-ul este deschis, `creditsStore.startPaymentWatch` compară profilul
+(`GET /api/users/me`) la fiecare 3 secunde, timp de maximum 5 minute, cu starea
+dinaintea plății (sold + `subscriptionActive`):
+
+- **confirmat** — soldul a crescut sau abonamentul s-a activat. Ambele se schimbă
+  exclusiv prin webhook, deci întoarcerea din checkout fără plată nu produce
+  fals pozitiv;
+- **timeout** — mesaj care cere reîmprospătare manuală; RevenueCat retrimite
+  evenimentul cu backoff până la ~80 de minute, iar idempotența garantează că
+  creditele nu se dublează.
+
+Starea dinaintea plății este păstrată în `sessionStorage`
+(`toonmint.pendingPurchase`), deci urmărirea se reia și dacă pagina de succes
+RevenueCat redirecționează înapoi în aplicație. Pentru asta configurează în
+dashboard *Success → Redirect to a custom success page* către
+`https://toonmint.cs-hub.xyz/credits?purchase=success`; `?purchase=cancel` oprește
+urmărirea.

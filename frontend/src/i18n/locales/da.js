@@ -1,0 +1,58 @@
+export default {
+  'common.language': 'Sprog',
+  'common.credits': { one: '{count} kredit', other: '{count} credits' },
+  'nav.studio': 'Studio',
+  'nav.credits': 'Kreditter',
+  'nav.admin': 'Admin',
+  'nav.logout': 'Log ud',
+  'nav.login': 'Log ind',
+  'footer.tagline':
+    'ToonMint · billeder behandles midlertidigt (maks. 10 minutter), gemmes aldrig permanent · betaling via RevenueCat',
+  'footer.cookieSettings': 'Cookieindstillinger',
+  'legal.privacy': 'Privatliv',
+  'legal.cookies': 'Cookies',
+  'legal.terms': 'Vilkår',
+  'legal.licenses': 'Licenser',
+  'consent.text':
+    'Vi bruger strengt nødvendige cookies, så din konto fungerer. Med dit samtykke aktiverer vi også analyse (Google Analytics, Microsoft Clarity) og, hvor det er relevant, annoncer (Google AdSense). Vi sælger aldrig dine data.',
+  'consent.customize': 'Tilpas',
+  'consent.reject': 'Kun nødvendige',
+  'consent.accept': 'Accepter alle',
+  'consent.modal.title': 'Cookieindstillinger',
+  'consent.modal.desc':
+    'Du kan ændre disse valgmuligheder når som helst. Dokumentversion: {version}. Detaljer i',
+  'consent.modal.policy': 'cookiepolitikken',
+  'consent.modal.necessary': 'Strengt nødvendige',
+  'consent.modal.necessaryText':
+    'Din loggede session (toonmint.token) og dette valg. De kan ikke slås fra.',
+  'consent.modal.always': 'Altid aktive',
+  'consent.modal.analytics': 'Analyse',
+  'consent.modal.analyticsText':
+    'Google Analytics 4 og Microsoft Clarity: besøgte sider, heatmaps, fejl. Hjælper os med at forbedre siden.',
+  'consent.modal.ads': 'Annoncer',
+  'consent.modal.adsText':
+    'Google AdSense: annoncer, også personlige, og måling af dem. Uden samtykke indlæses annoncescriptet slet ikke.',
+  'consent.modal.withdraw': 'Træk alle tilbage',
+  'consent.modal.save': 'Gem indstillinger',
+  'landing.eyebrow': '✨ ToonMint · dit AI-atelier',
+  'landing.title': 'Lav ethvert billede om til toonkunst',
+  'landing.subtitle':
+    'Upload et billede, vælg en stil og få den tegnede version på under to minutter. Det første billede er gratis — ingen konto, kun en e-mailadresse.',
+  'landing.try': 'Prøv gratis',
+  'landing.continue': 'Fortsæt i studiet',
+  'landing.fact.free': '1 gratis billede pr. e-mail',
+  'landing.fact.noStore': 'Billeder gemmes aldrig permanent',
+  'landing.fact.preview': 'Se stilarterne, før du vælger',
+  'landing.badge.photo': 'Eksempelbillede',
+  'landing.slider.ready': 'Rigtigt eksempel · træk i håndtaget for at se forvandlingen.',
+  'landing.slider.pending': 'Se stilene nedenfor, og prøv gratis.',
+  'landing.gallery.title': 'Find den stil, der passer til dig',
+  'landing.gallery.cta': 'Vælg en stil',
+  'auth.tabLogin': 'Log ind',
+  'auth.tabRegister': 'Opret konto',
+  'auth.email': 'E-mail',
+  'auth.password': 'Adgangskode',
+  'auth.login': 'Log ind',
+  'auth.register': 'Opret konto',
+  'auth.processing': 'Behandler…'
+}

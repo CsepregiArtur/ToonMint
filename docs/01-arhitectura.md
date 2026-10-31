@@ -25,10 +25,10 @@
 |---|---|
 | `ai` | Interfața `ImageGenerationProvider`, implementările `GeminiImageProvider` și `StubImageProvider`, retry cu jitter, validare magic bytes, redimensionare |
 | `config` | `AppProperties` (toată configurația), securitate, CORS, executor de job-uri, OpenAPI, bootstrap admin |
-| `domain` | Entități JPA: `User`, `Job`, `CreditTransaction`, `SubscriptionEvent`, `EmailMessage` |
+| `domain` | Entități JPA: `User`, `Job`, `CreditTransaction`, `SubscriptionEvent`, `EmailMessage`, `FinanceEntry` |
 | `repository` | Spring Data JPA; două query-uri custom (`search`, `statsByStyle`) și blocarea pessimistică a utilizatorului |
 | `security` | Emitere/validare JWT, filtru Bearer, contextul utilizatorului curent |
-| `service` | Reguli de business: job-uri, credite, plăți RevenueCat, email, utilizatori |
+| `service` | Reguli de business: job-uri, credite, plăți RevenueCat, email, utilizatori, bookkeeping financiar |
 | `storage` | Cache temporar de imagini (Caffeine sau Redis, TTL) |
 | `ratelimit` | Token bucket: script Lua atomic în Redis + fallback în memorie |
 | `web` | Controllere REST, DTO-uri, tratarea centralizată a erorilor |
@@ -91,7 +91,7 @@ Joburile de trial au `user_id = NULL`, `credits_consumed = 0` și `trial = true`
 ## 4. Fluxul de plată (RevenueCat)
 
 ```text
-Client ── GET /api/billing/catalog ──► link pay.rev.cat?app_user_id=...
+Client ── GET /api/billing/catalog ──► link pay.rev.cat/<token>/<public_id>
    │
    ├── checkout găzduit de RevenueCat ──► card / store
    │
@@ -126,8 +126,9 @@ users (1) ────< email_messages (N)
 | `guest_trials` | revendicarea generării gratuite | `email` unic, `job_id` |
 | `subscription_events` | jurnal webhook-uri RevenueCat | `event_id` unic, `status`, `payload` |
 | `email_messages` | audit pentru emailuri | `sent_by_user_id`, `recipient_count`, `status` |
+| `finance_entries` | bookkeeping: încasări și cheltuieli | `kind`, `category`, `amount`, `currency`, `fx_rate`, `source`, `reference_key` |
 
-Migrarea este în `backend/src/main/resources/db/migration/V1__init.sql` și rulează
+Migrările sunt în `backend/src/main/resources/db/migration/` (`V1`…`V4`) și rulează
 identic pe PostgreSQL și H2 (mod `PostgreSQL`).
 
 ## 6. Starea runtime
