@@ -156,6 +156,12 @@ p {
   border-radius: 7px;
 }
 
+.app-version {
+  color: #9995a3;
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+}
+
 .stack {
   display: flex;
   flex-direction: column;

@@ -7,6 +7,7 @@ import { LEGAL_LINKS, SITE } from './legal/site'
 import CookieNotice from './components/CookieNotice.vue'
 import LanguageSwitcher from './components/LanguageSwitcher.vue'
 import { t } from './i18n'
+import { version as appVersion } from '../package.json'
 
 // Shell-ul aplicației: bara de navigare, soldul de credite și ieșirea din cont.
 const auth = useAuthStore()
@@ -92,6 +93,7 @@ onMounted(() => {
         <a :href="SITE.anpc.sal" target="_blank" rel="noopener noreferrer">{{ t('footer.anpc') }}</a> ·
         <a :href="SITE.anpc.sol" target="_blank" rel="noopener noreferrer">{{ t('footer.sol') }}</a>
       </p>
+      <p class="app-version">ToonMint v{{ appVersion }}</p>
     </footer>
 
     <CookieNotice />
