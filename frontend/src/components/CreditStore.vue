@@ -3,6 +3,7 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useCreditsStore } from '../stores/credits'
 import { useAuthStore } from '../stores/auth'
 import { locale, t } from '../i18n'
+import { configurePurchases, isNative, restorePurchases } from '../lib/native'
 
 // Soldul de credite, planurile de abonament, pachetele suplimentare și istoricul tranzacțiilor.
 const creditsStore = useCreditsStore()
@@ -21,6 +22,9 @@ const balance = computed(() => auth.credits)
 
 // Pachetele sunt un supliment pentru abonați, nu o alternativă la abonament.
 const hasActiveSubscription = computed(() => Boolean(auth.user?.subscriptionActive))
+// În aplicațiile native cumpărarea merge prin App Store / Google Play, nu prin link web.
+const nativeApp = isNative()
+const restoring = ref(false)
 
 let escHandler = null
 
@@ -79,6 +83,10 @@ async function buyPack(pack) {
     actionError.value = t('credits.ackNeeded')
     return
   }
+  if (nativeApp) {
+    await buyPackNative(pack)
+    return
+  }
   if (!pack.purchaseUrl) {
     actionError.value = t('credits.noLink')
     return
@@ -112,6 +120,39 @@ async function buyPack(pack) {
   }
 }
 
+// Cumpărarea în aplicație: App Store / Google Play. Regula abonamentului se
+// verifică pe entitlement-ul RevenueCat, înainte de fereastra magazinului.
+async function buyPackNative(pack) {
+  busyPackId.value = pack.id
+  try {
+    await creditsStore.acknowledge(pack.id)
+    await creditsStore.purchaseNative(pack.id, { requireSubscription: true })
+  } catch (error) {
+    if (error.code === 'SUBSCRIPTION_REQUIRED') {
+      openSubscriptionPrompt()
+    } else {
+      actionError.value = error.message
+    }
+  } finally {
+    busyPackId.value = ''
+  }
+}
+
+// Reia cumpărările făcute cu același cont Apple/Google (cerut de App Store).
+async function restore() {
+  actionError.value = ''
+  restoring.value = true
+  try {
+    await configurePurchases(auth.user?.publicId)
+    await restorePurchases()
+    await refreshAll()
+  } catch (error) {
+    actionError.value = error.message
+  } finally {
+    restoring.value = false
+  }
+}
+
 // Deschide linkul de abonament (plan săptămânal sau anual).
 // Fereastra se deschide sincron (altfel browserul blochează popup-ul), apoi primește
 // adresa după ce confirmarea a fost înregistrată pe server.
@@ -119,6 +160,16 @@ async function openPlan(plan) {
   actionError.value = ''
   if (!acknowledged.value) {
     actionError.value = t('credits.ackNeeded')
+    return
+  }
+  // În aplicație abonamentul se cumpără prin magazinul platformei, nu prin link web.
+  if (nativeApp) {
+    try {
+      await creditsStore.acknowledge(plan.id)
+      await creditsStore.purchaseNative(plan.id)
+    } catch (error) {
+      actionError.value = error.message
+    }
     return
   }
   if (!plan.purchaseUrl) {
@@ -184,13 +235,18 @@ onMounted(async () => {
           </span>
         </p>
       </div>
-      <button class="btn ghost" @click="refreshAll">{{ t('credits.refresh') }}</button>
+      <div class="hero-actions">
+        <button class="btn ghost" @click="refreshAll">{{ t('credits.refresh') }}</button>
+        <button v-if="nativeApp" class="btn ghost" :disabled="restoring" @click="restore">
+          {{ restoring ? t('credits.restoring') : t('credits.restore') }}
+        </button>
+      </div>
     </div>
 
     <p v-if="actionError" class="error">{{ actionError }}</p>
     <p v-if="creditsStore.error" class="error">{{ creditsStore.error }}</p>
-    <p v-if="!creditsStore.catalog.configured" class="error">
-      {{ t('credits.notConfigured') }}
+    <p v-if="nativeApp && !creditsStore.catalog.configured" class="hint">
+      {{ t('credits.notConfiguredNative') }}
     </p>
 
     <div v-if="creditsStore.payment.status === 'waiting'" class="payment-status hint">
@@ -230,7 +286,7 @@ onMounted(async () => {
           <h3>{{ plan.label }}</h3>
           <p class="price">{{ plan.price }}</p>
           <p class="muted small">{{ t('landing.pricing.line', { count: plan.credits }) }}</p>
-          <button class="btn primary" :disabled="!acknowledged || !plan.purchaseUrl" @click="openPlan(plan)">
+          <button class="btn primary" :disabled="!acknowledged || (!nativeApp && !plan.purchaseUrl)" @click="openPlan(plan)">
             {{ t('credits.subscribe') }}
           </button>
         </article>
@@ -249,7 +305,7 @@ onMounted(async () => {
           <p class="muted small">{{ t('landing.pricing.line', { count: pack.credits }) }}</p>
           <button
             class="btn primary"
-            :disabled="!acknowledged || busyPackId === pack.id || !pack.purchaseUrl"
+            :disabled="!acknowledged || busyPackId === pack.id || (!nativeApp && !pack.purchaseUrl)"
             @click="buyPack(pack)"
           >
             {{ busyPackId === pack.id ? t('credits.opening') : t('credits.buy') }}
@@ -370,6 +426,12 @@ onMounted(async () => {
   display: flex;
   flex-wrap: wrap;
   justify-content: flex-end;
+  gap: 8px;
+}
+
+.hero-actions {
+  display: flex;
+  flex-wrap: wrap;
   gap: 8px;
 }
 </style>

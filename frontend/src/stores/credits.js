@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import http from '../api/client'
 import { useAuthStore } from './auth'
 import { SITE } from '../legal/site'
+import { configurePurchases, purchaseProduct } from '../lib/native'
 
 // Urmărirea plății: după checkout, webhook-ul RevenueCat poate întârzia câteva
 // zeci de secunde, deci comparăm periodic profilul cu starea dinaintea plății.
@@ -85,6 +86,20 @@ export const useCreditsStore = defineStore('credits', {
       await this.acknowledge(packId)
       const { data } = await http.post('/credits/purchase', { packId })
       return { purchaseUrl: data.purchaseUrl, snapshot }
+    },
+
+    // Cumpără prin App Store / Google Play. Nu trece prin `/credits/purchase`
+    // (care cere link web), deci regula „pachetele cer abonament” se verifică aici
+    // pe entitlement-ul RevenueCat. Creditele apar tot la webhook.
+    async purchaseNative(productId, { requireSubscription = false } = {}) {
+      const auth = useAuthStore()
+      const snapshot = this.paymentSnapshot(productId)
+      await configurePurchases(auth.user?.publicId)
+      const result = await purchaseProduct(productId, { requireSubscription })
+      if (!result.cancelled) {
+        this.startPaymentWatch(snapshot)
+      }
+      return result
     },
 
     // Starea de referință față de care detectăm confirmarea plății.

@@ -21,6 +21,28 @@ singurele lucruri care **nu** există în web și sunt obligatorii în magazine 
 **camera/galerie** și **in-app purchase**. Restul (auth JWT, upload, joburi, credite,
 ștergere cont) funcționează neschimbat.
 
+## 1b. Stare implementare (2026-10-31)
+
+| Pas | Stare | Dovadă |
+|---|---|---|
+| Capacitor 8.6.0 + 6 plugin-uri instalate | ✅ | `frontend/package.json` |
+| `capacitor.config.json` | ✅ | `appId: xyz.cshub.toonmint`, `webDir: dist` |
+| `src/lib/native.js` (cameră, IAP, entitlement, restore) | ✅ | modul nou |
+| `VITE_API_BASE_URL` + avertisment la build nativ | ✅ | [`api/client.js`](../frontend/src/api/client.js) |
+| Cameră în studio (nativ), upload prin fluxul existent | ✅ | [`JobUploader.vue`](../frontend/src/components/JobUploader.vue) |
+| IAP + Restore în pagina de credite, regula abonamentului pe entitlement | ✅ | [`CreditStore.vue`](../frontend/src/components/CreditStore.vue), [`credits.js`](../frontend/src/stores/credits.js) |
+| Proiect iOS generat (SPM, fără CocoaPods) | ✅ | `frontend/ios/`, `Package.swift` cu toate plugin-urile |
+| Permisiuni cameră/fotografii în `Info.plist` | ✅ | `NSCameraUsageDescription`, `NSPhotoLibrary*` |
+| Build iOS pentru simulator | ✅ | `xcodebuild … -sdk iphonesimulator` → **BUILD SUCCEEDED** |
+| CORS pentru originile native pe producție | ✅ | `OPTIONS` → `Access-Control-Allow-Origin: capacitor://localhost` |
+| Produse în App Store Connect / Play Console | ⛔ | necesită conturile de dezvoltator |
+| Proiect Android | ⛔ | așteaptă Android Studio |
+
+Ce lipsește ca aplicația să funcționeze cap-coadă: cheile publice RevenueCat
+(`VITE_REVENUECAT_IOS_API_KEY`), produsele create în magazine și build-ul cu
+`VITE_API_BASE_URL`. Fără ele aplicația pornește și se autentifică, dar cumpărările
+eșuează cu „RevenueCat API key is not configured for this platform”.
+
 ## 2. Constrângerea care dictează totul: IAP
 
 Apple (App Store Review Guidelines 3.1.1) și Google (Payments policy) cer ca
@@ -37,8 +59,10 @@ Consecințe directe:
    `purchasePackage`, pentru că IAP nu trece prin `POST /api/credits/purchase`.
    Verificarea se face pe `CustomerInfo.entitlements.active['pro']`.
 3. Produsele consumabile (pachetul de 20 de credite) trebuie **consumate** după
-   cumpărare (`consumePurchase` / `finishTransaction`), altfel magazinul refuză
-   recumpărarea.
+   cumpărare, altfel magazinul refuză recumpărarea. Cu setarea implicită a SDK-ului
+   (`purchasesAreCompletedBy: REVENUECAT`) RevenueCat face el acknowledge/consume,
+   deci aplicația nu are cod propriu pentru asta — important doar dacă se trece
+   vreodată pe `MY_APP`.
 
 Revendicarea creditelor rămâne neschimbată: RevenueCat trimite webhook-ul
 `NON_RENEWING_PURCHASE` / `INITIAL_PURCHASE`, iar
@@ -56,7 +80,7 @@ Android Studio 2025.2.1+. Cele două schimbări importante față de generația 
 | Element | Necesar | Stare la 2026-10-31 |
 |---|---|---|
 | Apple Developer Program | cont plătit (99 USD/an) | de creat |
-| App Store Connect | înregistrare aplicație, bundle id `xyz.cs-hub.toonmint` | după cont |
+| App Store Connect | înregistrare aplicație, bundle id `xyz.cshub.toonmint` | după cont |
 | Google Play Console | cont (25 USD o singură dată) | de creat |
 | Xcode | ≥ 26.0 (Capacitor 8) | **27.2 instalat**, dar `xcode-select` arată încă `/Library/Developer/CommandLineTools` → o comandă de rulat (§3.1.1) |
 | CocoaPods | **nu mai este necesar** — SPM e implicit; plugin-ul RevenueCat livrează `Package.swift` | — |
@@ -82,7 +106,7 @@ Dacă `xcodebuild -runFirstLaunch` semnalează licența neacceptată:
 ### 3.2 RevenueCat (proiectul existent `d6c976c5`)
 
 1. Adaugă aplicația **App Store** (bundle id de mai sus) și **Google Play**
-   (package `xyz.cs_hub.toonmint` — fără cratime, Play nu le acceptă).
+   (package `xyz.cshub.toonmint` — identic cu bundle id-ul iOS, deja setat în `capacitor.config.json`).
 2. Produsele trebuie să aibă **exact** identificatorii din `application.yml`, altfel
    maparea produs → credite din [`AppProperties.RevenueCat`](../backend/src/main/java/com/toonmint/config/AppProperties.java) nu se aplică:
 
@@ -109,8 +133,8 @@ Dacă `xcodebuild -runFirstLaunch` semnalează licența neacceptată:
 | 6 | [`frontend/src/components/JobUploader.vue`](../frontend/src/components/JobUploader.vue) | Pe mobil, `<input type="file">` (linia 125) se înlocuiește cu plugin-ul Camera; rezultatul base64 merge pe varianta JSON deja suportată de `POST /api/jobs` și `POST /api/public/trial` (`imageBase64`). |
 | 7 | [`frontend/src/components/CreditStore.vue`](../frontend/src/components/CreditStore.vue) | `isNative()` ascunde butoanele care deschid `pay.rev.cat` și afișează cumpărarea prin IAP + **Restore purchases** (cerut de Apple). Păstrează modalul de abonament obligatoriu. |
 | 8 | [`frontend/src/stores/credits.js`](../frontend/src/stores/credits.js) | Ramură nativă în `purchase()` / `openPlan()`: `purchasePackage` → apoi `startPaymentWatch(snapshot)` ca astăzi (creditele apar la webhook). |
-| 9 | [`frontend/src/stores/auth.js`](../frontend/src/stores/auth.js) | Tokenul în `@capacitor/preferences` în loc de `localStorage` (WKWebView poate goli stocarea). |
-| 10 | `backend` env pe server | `CORS_ALLOWED_ORIGINS` += `capacitor://localhost`, `http://localhost`, `https://localhost` ([SecurityConfig](../backend/src/main/java/com/toonmint/config/SecurityConfig.java:88) respinge originile necunoscute). |
+| 9 | [`frontend/src/stores/auth.js`](../frontend/src/stores/auth.js) | **Nu se migrează.** `localStorage` persistă între lansări în WKWebView / Android WebView; mutarea în `@capacitor/preferences` ar cere inițializare asincronă în `state` și ar atinge toate fluxurile de auth, fără beneficiu dovedit. |
+| 10 | `backend` env pe server | `CORS_ALLOWED_ORIGINS` += `capacitor://localhost`, `http://localhost`, `https://localhost` ([SecurityConfig](../backend/src/main/java/com/toonmint/config/SecurityConfig.java:88) respinge originile necunoscute). **Aplicat pe producție** și verificat cu `OPTIONS` din ambele origini. |
 
 ### 3.4 Sesiunea: azi expiră în 24 de ore
 
@@ -135,7 +159,8 @@ Limitele pe IP ([05-credite-si-rate-limiting.md](05-credite-si-rate-limiting.md)
 
 1. Activează Xcode 27.2 (§3.1.1). Nu se instalează CocoaPods — `npx cap add ios`
    folosește SPM.
-2. `npm i` în `frontend/`, apoi `npx cap init` cu `appId: xyz.cs-hub.toonmint`.
+2. `npm i` în `frontend/` (proiectul Capacitor există deja: `capacitor.config.json`,
+   `appId: xyz.cshub.toonmint`).
 3. `npm run build && npx cap add ios && npx cap sync ios`. Dacă vreun plugin nu expune
    `Package.swift`, refă adăugarea cu `--packagemanager CocoaPods` (necesită atunci
    `brew install cocoapods`).
@@ -179,7 +204,7 @@ Reutilizează integral Faza 1; diferă doar ce ține de platformă.
 1. Android Studio + SDK 35 + **JDK 21** (Java 27 de pe mașină nu este suportat de AGP).
 2. `npm run build && npx cap add android && npx cap sync android`.
 3. `AndroidManifest.xml`: `CAMERA`, `READ_MEDIA_IMAGES` (API 33+), `INTERNET`.
-4. Configurare Play Console: aplicație, package `xyz.cs_hub.toonmint`, produse identice,
+4. Configurare Play Console: aplicație, package `xyz.cshub.toonmint`, produse identice,
    apoi upload AAB în *Internal testing*.
 5. Test pe dispozitiv real (camera emulatorului nu acoperă EXIF/HEIC).
 6. Verifică descărcarea imaginii în galerie prin `@capacitor/filesystem` (pe Android
@@ -212,7 +237,7 @@ rotirea ecranului nu pierde jobul în curs, notificarea de expirare a imaginii r
 
 ## 8. Decizii deschise
 
-1. Bundle id / package: `xyz.cs-hub.toonmint` (iOS) și `xyz.cs_hub.toonmint` (Android) — se confirmă înainte de înregistrarea în magazine.
+1. Bundle id / package: `xyz.cshub.toonmint` pentru ambele platforme (deja în config) — se confirmă înainte de înregistrarea în magazine.
 2. Refresh token (§3.4) sau TTL lung.
 3. Dacă pachetele de credite rămân disponibile în aplicație sau doar în web (Apple
    permite ambele, dar top-up-urile în aplicație cresc complexitatea review-ului).

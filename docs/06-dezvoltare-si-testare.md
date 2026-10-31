@@ -27,6 +27,31 @@ npm run dev                         # http://localhost:5173 (proxy /api → 8080
 npm run build                       # build de producție în dist/
 ```
 
+### 2.1 Aplicațiile mobile (Capacitor)
+
+Shell-urile native refolosesc exact build-ul din `dist/`. Nu se editează nimic în
+`ios/` sau `android/` — se rulează sincronizarea.
+
+```bash
+cd frontend
+npm run build
+npx cap sync ios                    # copiază dist/ + actualizează Package.swift
+npx cap open ios                    # deschide Xcode (sau build direct, mai jos)
+
+# build pentru simulator, fără semnare:
+xcodebuild -project ios/App/App.xcodeproj -scheme App -sdk iphonesimulator \
+  -configuration Debug -destination 'generic/platform=iOS Simulator' \
+  CODE_SIGNING_ALLOWED=NO build
+```
+
+Pentru ca aplicația să ajungă la server, build-ul are nevoie de
+`VITE_API_BASE_URL=https://toonmint.cs-hub.xyz/api` în `frontend/.env` — altfel
+`/api` ar fi relativ la `capacitor://localhost`. Cumpărările cer în plus
+`VITE_REVENUECAT_IOS_API_KEY` / `VITE_REVENUECAT_ANDROID_API_KEY`.
+
+`ios/App/App/public/` este generat (ignorat de git), deci după clonare se rulează
+întâi `npm run build && npx cap sync ios`. Detalii: [13 – Aplicații mobile](13-mobil-ios-android.md).
+
 ## 3. Servicii externe fără Docker
 
 Proiectul rulează direct pe sistem, fără containere. Profilul `dev` nu are nevoie de

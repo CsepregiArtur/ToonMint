@@ -1,9 +1,19 @@
 import axios from 'axios'
+import { Capacitor } from '@capacitor/core'
 
 // Clientul HTTP comun pentru toate cererile către API.
 // Adaugă automat tokenul JWT și normalizează mesajele de eroare venite de la server.
+const apiBaseUrl = import.meta.env.VITE_API_BASE_URL
+
+// Într-un WebView, `/api` ar fi relativ la `capacitor://localhost`, nu la server.
+if (Capacitor.isNativePlatform() && !apiBaseUrl) {
+  console.warn('VITE_API_BASE_URL is missing: native builds must point to the public API URL')
+}
+
 const http = axios.create({
-  baseURL: '/api',
+  // În browser, `/api` ajunge la nginx; în aplicația nativă adresa completă vine
+  // la build prin `VITE_API_BASE_URL`.
+  baseURL: apiBaseUrl || '/api',
   timeout: 90000
 })
 

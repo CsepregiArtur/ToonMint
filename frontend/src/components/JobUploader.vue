@@ -5,6 +5,7 @@ import StylePicker from './StylePicker.vue'
 import { useAuthStore } from '../stores/auth'
 import { useCreditsStore } from '../stores/credits'
 import { t } from '../i18n'
+import { isNative, takePhoto } from '../lib/native'
 
 // Evenimentul `created` anunță pagina părinte că un job nou a fost trimis.
 const emit = defineEmits(['created'])
@@ -36,6 +37,11 @@ function onFileChange(event) {
   if (!selected) {
     return
   }
+  acceptSelection(selected)
+}
+
+// Aplică o fotografie venită din orice sursă (input de fișier sau camera nativă).
+function acceptSelection(selected) {
   if (!['image/png', 'image/jpeg', 'image/webp'].includes(selected.type)) {
     error.value = t('studio.errType')
     clearSelection()
@@ -51,6 +57,25 @@ function onFileChange(event) {
   }
   file.value = selected
   previewUrl.value = URL.createObjectURL(selected)
+}
+
+// În aplicație, fotografia vine din cameră sau galerie prin plugin-ul nativ.
+const nativeApp = isNative()
+const cameraBusy = ref(false)
+
+async function pickFromDevice() {
+  error.value = ''
+  cameraBusy.value = true
+  try {
+    const selected = await takePhoto()
+    if (selected) {
+      acceptSelection(selected)
+    }
+  } catch (photoError) {
+    error.value = photoError.message
+  } finally {
+    cameraBusy.value = false
+  }
 }
 
 // Golește selecția curentă și preview-ul.
@@ -119,7 +144,7 @@ onBeforeUnmount(() => {
     </header>
 
     <div class="uploader-body">
-      <label class="dropzone" :class="{ filled: previewUrl }">
+      <label v-if="!nativeApp" class="dropzone" :class="{ filled: previewUrl }">
         <input
           ref="fileInput"
           type="file"
@@ -134,6 +159,22 @@ onBeforeUnmount(() => {
           <span class="muted">{{ t('studio.format') }}</span>
         </div>
       </label>
+
+      <button
+        v-else
+        type="button"
+        class="dropzone"
+        :class="{ filled: previewUrl }"
+        :disabled="cameraBusy"
+        @click="pickFromDevice"
+      >
+        <img v-if="previewUrl" :src="previewUrl" :alt="t('studio.previewAlt')" />
+        <div v-else class="dropzone-placeholder">
+          <span class="dropzone-icon">＋</span>
+          <strong>{{ cameraBusy ? t('studio.cameraOpening') : t('studio.takePhoto') }}</strong>
+          <span class="muted">{{ t('studio.format') }}</span>
+        </div>
+      </button>
 
       <div class="uploader-controls">
         <div class="field">
