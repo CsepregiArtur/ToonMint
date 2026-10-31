@@ -15,14 +15,15 @@
 > **După remediere (secțiunea 9):** toate problemele de **cod** sunt rezolvate și testate.
 >
 > **Re-testare live (secțiunea 10):** frontend-ul nou e **deployed și verificat**.
-> ⚠️ **Backend-ul NU e redeployat** — rate limiting-ul pe login nu e activ în producție.
-> Rămân **4 acțiuni** în afara repo-ului: redeploy backend, header-e nginx,
-> HSTS/Cloudflare, WAF skip.
+>
+> **Acțiuni aplicate pe server (secțiunea 11):** backend **redeployat**, header-e
+> de securitate + HSTS **active**, rate limiting pe login **funcțional** (11 → `429`).
+> Rămâne **1 acțiune** (WAF skip în Cloudflare, cere login în dashboard) + testul E2E.
 
-| Categorie | Inițial | După remediere | La re-testare (live) |
+| Categorie | Inițial | La re-testare | **După acțiunile pe server** |
 |---|---|---|---|
-| 🔴 Blocker | 1 | 0 (în cod) | **1 — backend nedeplyat** |
-| 🟠 Major | 5 | 2 (pe server) | 3 (+ WAF pe sitemap) |
+| 🔴 Blocker | 1 | 1 (backend nedeplyat) | **0** ✅ |
+| 🟠 Major | 5 | 3 | **1** (WAF skip / sitemap) |
 | 🟡 Minor | 6 | 4 | 4 |
 | ⏳ Netestate (necesită cont/plată) | 6 | 6 | 6 |
 
@@ -431,3 +432,115 @@ Adaugă în regula WAF de skip și `/sitemap.xml` (sau permite `starts_with(http
 > **Concluzie:** aplicația **nu este încă production-ready** — mai sunt **4 acțiuni de infrastructură**
 > (redeploy backend, header-e nginx, HSTS, WAF skip) plus testul E2E.
 > Din punct de vedere al codului, totul e implementat și testat (67 teste, 0 eșecuri).
+
+---
+
+## 11. Acțiuni aplicate pe server (2026-10-31, 19:07–19:09)
+
+Server: `192.168.1.99` (`App-Hosting`), acces SSH pe cheie. Procedura completă e în
+[`deploy/README.md`](../deploy/README.md).
+
+### ✅ 1. Backend redeployat
+
+Jar-ul din producție **nu conținea** codul nou — verificat direct în bytecode:
+
+```bash
+$ unzip -p app.jar BOOT-INF/classes/com/toonmint/service/AuthService.class | strings | grep login-ip
+0        # (înainte)
+```
+
+Pași: backup `app.jar.bak.20261031-190714` → upload `toonmint-backend-1.0.0.jar` →
+`chown toonmint:toonmint` + `chmod 640` → `mv` → `systemctl restart toonmint-api`.
+
+```
+Started ToonMintApplication in 10.65 seconds
+api_health=200
+```
+
+**Verificat în producție** — 11 încercări de login eșuate:
+
+```
+[401, 401, 401, 401, 401, 401, 401, 401, 401, 401, 429]
+                                                  ↑ a 11-a
+Retry-After: 5
+{"code":"RATE_LIMIT_EXCEEDED","message":"Too many requests. Please retry later."}
+```
+
+> Redis (`RATE_LIMIT_BACKEND=redis`) confirmat activ — limiter-ul e partajat, nu per-instanță.
+
+### ✅ 2. Header-e de securitate în nginx
+
+Snippet nou: `/etc/nginx/snippets/toonmint-security-headers.conf`, inclus în cele 3
+locații care servesc SPA-ul (`/assets/`, `/`, `= /index.html`).
+Configurație veche salvată: `toonmint.conf.bak.20261031-190850`. `nginx -t` → OK.
+
+De ce `include` și nu `add_header` la nivel de `server`: cele două locații au deja
+`add_header Cache-Control`, iar nginx nu mai moștenește directivele din nivelul
+superior când locația definește propriile `add_header`.
+
+Verificat **prin Cloudflare** (`https://toonmint.cs-hub.xyz/`):
+
+| Header | Valoare |
+|---|---|
+| `X-Frame-Options` | `DENY` |
+| `X-Content-Type-Options` | `nosniff` |
+| `Referrer-Policy` | `strict-origin-when-cross-origin` |
+| `Permissions-Policy` | `camera=(), microphone=(), geolocation=(), payment=(self "https://pay.rev.cat")` |
+| `Strict-Transport-Security` | `max-age=15552000` |
+
+Aceleași header-e apar și pe `/assets/*` și pe rutele SPA inexistente.
+
+### ✅ 3. HSTS — rezolvat, fără acces la Cloudflare
+
+HSTS a fost setat **din nginx**, nu din dashboard-ul Cloudflare. Cloudflare lasă
+headerul de la origine să treacă, deci nu a fost nevoie de login.
+`max-age=15552000` (180 zile), fără `includeSubDomains` (în zonă există și alte
+subdomenii).
+
+### ❌ 4. WAF skip în Cloudflare — NEREZOLVAT (cere autentificare)
+
+`dash.cloudflare.com` cere login; nu există sesiune în browser, iar credențialele
+nu pot fi introduse de asistent. Regula trebuie creată manual:
+
+**Security → WAF → Custom rules → Create rule**
+- Expression: `(starts_with(http.request.uri.path, "/api/") or http.request.uri.path eq "/sitemap.xml")`
+- Action: **Skip** → bifează *All remaining custom rules*, *Managed rules*,
+  *Super Bot Fight Mode*, *Security level*, *Rate limiting*
+
+Fără ea:
+- orice monitorizare uptime raportează **DOWN** (Cloudflare răspunde `403`);
+- `sitemap.xml` poate fi respins pentru crawler-ele neincluse în „verified bots";
+- viitoare integrări server-to-server primesc `403`.
+- ✅ Webhook-ul RevenueCat **funcționează** deja (excepție existentă) — testat după
+  redeploy: `401 INVALID_WEBHOOK_SIGNATURE` de la aplicație, nu `403` de la Cloudflare.
+
+### ⏭️ CSP pe HTML — amânat intenționat
+
+Nu am adăugat `Content-Security-Policy` pe documentul HTML. Motiv: `VITE_GTM_ID`,
+`VITE_GA4_ID` și `VITE_ADSENSE_CLIENT` sunt goale acum, dar când vor fi setate,
+politica trebuie să permită exact domeniile Google — altfel analitica și AdSense se
+blochează tăcut. Se adaugă împreună cu ID-urile, pornind în `Report-Only` o săptămână.
+
+### Verificare post-deploy (regresie)
+
+| Check | Rezultat |
+|---|---|
+| `GET /api/styles` | `200`, 26 stiluri |
+| `GET /api/public/billing/catalog` | `200`, 3 planuri |
+| `GET /api/users/me` (fără token) | `401 UNAUTHORIZED` |
+| `POST /api/webhooks/revenuecat` | `401 INVALID_WEBHOOK_SIGNATURE` (ajunge la aplicație) |
+| `systemctl is-active toonmint-api` | `active` |
+| `systemctl is-active nginx` | `active` |
+
+### Stare finală
+
+| Zonă | Stare |
+|---|---|
+| Backend (cod nou + rate limiting) | ✅ live |
+| Header-e securitate + HSTS | ✅ live |
+| Frontend (SEO, 404, OG, favicon) | ✅ live |
+| Excepție WAF pentru monitorizare / sitemap | ❌ necesită login Cloudflare |
+| Test E2E (register → generare → plată) | ⏳ nerealizat |
+
+> **Concluzie:** singurul lucru rămas **tehnic** înainte de lansare este regula WAF din
+> Cloudflare (5 minute, după login). Restul e testul E2E cu cont real și un card de test.
