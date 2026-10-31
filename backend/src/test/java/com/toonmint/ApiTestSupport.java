@@ -2,6 +2,7 @@ package com.toonmint;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.toonmint.domain.SubscriptionType;
 import com.toonmint.domain.User;
 import com.toonmint.repository.CreditTransactionRepository;
 import com.toonmint.repository.JobRepository;
@@ -90,6 +91,14 @@ abstract class ApiTestSupport {
     protected void giveCredits(String email, int credits) {
         User user = userRepository.findByEmailIgnoreCase(email).orElseThrow();
         user.setCreditBalance(credits);
+        userRepository.save(user);
+    }
+
+    @Transactional
+    protected void giveSubscription(String email, SubscriptionType type, Instant expiresAt) {
+        User user = userRepository.findByEmailIgnoreCase(email).orElseThrow();
+        user.setSubscriptionType(type);
+        user.setSubscriptionExpiresAt(expiresAt);
         userRepository.save(user);
     }
 

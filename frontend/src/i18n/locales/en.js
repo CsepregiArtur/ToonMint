@@ -243,9 +243,13 @@ export default {
   'credits.plansNote': '1 credit = 1 generated image. The period and price are shown on each plan.',
   'credits.subscribe': 'Subscribe',
   'credits.packs': 'Credit packs',
-  'credits.packsNote': 'Buy only when you need them',
+  'credits.packsNote': 'Available with an active subscription — buy only when you need them',
   'credits.buy': 'Buy',
   'credits.opening': 'Opening…',
+  'credits.packsSubscribersOnly.title': 'Credit packs need a subscription',
+  'credits.packsSubscribersOnly.body':
+    'Extra credit packs are available only with an active subscription. Choose a weekly or yearly plan first — after that you can top up with credits whenever you need them.',
+  'credits.packsSubscribersOnly.cta': 'View subscription plans',
   'credits.paymentWaiting':
     'Waiting for the payment to be confirmed. You can keep this page open — credits appear automatically within seconds.',
   'credits.paymentConfirmed': 'Payment confirmed. The credits have been added to your account.',

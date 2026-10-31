@@ -38,6 +38,10 @@ Astfel, pentru același cont, webhook-urile din web și din aplicație ajung la 
 | `toonmint_yearly_2499` | abonament anual | 24.99 USD | 300 |
 | `toonmint_credits_20` | consumabil | 1.99 USD | 20 |
 
+Pachetul consumabil este oferit **doar utilizatorilor cu abonament activ**: backendul
+respinge cererea de checkout cu `403 SUBSCRIPTION_REQUIRED` dacă abonamentul lipsește
+sau a expirat, iar frontendul afișează un mesaj care trimite la planuri.
+
 3. Creează entitlement-ul **`pro`** și atașează-i cele două abonamente.
 4. Creează oferta `default` cu pachete pentru cele trei produse.
 5. Pentru web: creează un **Web Purchase Link** către offering și copiază URL-ul

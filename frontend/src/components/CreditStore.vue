@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useCreditsStore } from '../stores/credits'
 import { useAuthStore } from '../stores/auth'
 import { locale, t } from '../i18n'
@@ -12,9 +12,50 @@ const actionError = ref('')
 const busyPackId = ref('')
 // Confirmarea cerută de lege înainte de checkout (OUG 34/2014 art. 16 lit. m).
 const acknowledged = ref(false)
+// Explicația afișată când pachetele de credite sunt cerute fără abonament activ.
+const subscriptionPrompt = ref(false)
+const plansCard = ref(null)
 
 // Soldul curent afișat în antet.
 const balance = computed(() => auth.credits)
+
+// Pachetele sunt un supliment pentru abonați, nu o alternativă la abonament.
+const hasActiveSubscription = computed(() => Boolean(auth.user?.subscriptionActive))
+
+let escHandler = null
+
+// Deschide mesajul care îndrumă utilizatorul către planuri.
+function openSubscriptionPrompt() {
+  subscriptionPrompt.value = true
+  if (!escHandler) {
+    escHandler = (event) => {
+      if (event.key === 'Escape') {
+        closeSubscriptionPrompt()
+      }
+    }
+    window.addEventListener('keydown', escHandler)
+  }
+}
+
+function closeSubscriptionPrompt() {
+  subscriptionPrompt.value = false
+  if (escHandler) {
+    window.removeEventListener('keydown', escHandler)
+    escHandler = null
+  }
+}
+
+// Închide mesajul și duce utilizatorul la planurile de abonament.
+function showPlans() {
+  closeSubscriptionPrompt()
+  plansCard.value?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+}
+
+onBeforeUnmount(() => {
+  if (escHandler) {
+    window.removeEventListener('keydown', escHandler)
+  }
+})
 
 // Eticheta lizibilă a tipului unei tranzacții.
 const transactionLabels = computed(() => ({
@@ -26,17 +67,46 @@ const transactionLabels = computed(() => ({
 }))
 
 // Deschide checkout-ul RevenueCat pentru un pachet de credite.
+// Ca și la planuri, fereastra se deschide sincron (altfel browserul blochează
+// popup-ul), apoi primește adresa după ce confirmarea a fost înregistrată.
 async function buyPack(pack) {
   actionError.value = ''
+  if (!hasActiveSubscription.value) {
+    openSubscriptionPrompt()
+    return
+  }
   if (!acknowledged.value) {
     actionError.value = t('credits.ackNeeded')
     return
   }
+  if (!pack.purchaseUrl) {
+    actionError.value = t('credits.noLink')
+    return
+  }
   busyPackId.value = pack.id
+  const checkout = window.open('about:blank', '_blank')
   try {
-    await creditsStore.purchase(pack.id)
+    const { purchaseUrl, snapshot } = await creditsStore.purchase(pack.id)
+    if (!purchaseUrl) {
+      checkout?.close()
+      actionError.value = t('credits.noLink')
+      return
+    }
+    if (checkout) {
+      checkout.opener = null
+      checkout.location.href = purchaseUrl
+    } else {
+      window.location.href = purchaseUrl
+    }
+    creditsStore.startPaymentWatch(snapshot)
   } catch (error) {
-    actionError.value = error.message
+    checkout?.close()
+    // Serverul verifică din nou abonamentul: dacă a expirat între timp, arătăm același mesaj.
+    if (error.code === 'SUBSCRIPTION_REQUIRED') {
+      openSubscriptionPrompt()
+    } else {
+      actionError.value = error.message
+    }
   } finally {
     busyPackId.value = ''
   }
@@ -150,7 +220,7 @@ onMounted(async () => {
       </span>
     </label>
 
-    <div class="card">
+    <div ref="plansCard" class="card">
       <header class="card-header">
         <h2>{{ t('credits.plans') }}</h2>
         <span class="muted small">{{ t('credits.plansNote') }}</span>
@@ -217,5 +287,89 @@ onMounted(async () => {
         </tbody>
       </table>
     </div>
+
+    <div v-if="subscriptionPrompt" class="prompt-overlay" @click.self="closeSubscriptionPrompt">
+      <div class="prompt-card" role="dialog" aria-modal="true" aria-labelledby="pack-subscription-title">
+        <header class="prompt-head">
+          <h2 id="pack-subscription-title">{{ t('credits.packsSubscribersOnly.title') }}</h2>
+          <button
+            type="button"
+            class="prompt-close"
+            :aria-label="t('common.close')"
+            @click="closeSubscriptionPrompt"
+          >
+            ✕
+          </button>
+        </header>
+        <p class="muted">{{ t('credits.packsSubscribersOnly.body') }}</p>
+        <div class="prompt-actions">
+          <button type="button" class="btn ghost" @click="closeSubscriptionPrompt">
+            {{ t('common.close') }}
+          </button>
+          <button type="button" class="btn primary" @click="showPlans">
+            {{ t('credits.packsSubscribersOnly.cta') }}
+          </button>
+        </div>
+      </div>
+    </div>
   </section>
 </template>
+
+<style scoped>
+.prompt-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(20, 16, 32, 0.45);
+  backdrop-filter: blur(4px);
+}
+
+.prompt-card {
+  width: min(460px, 100%);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 22px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--card);
+  color: var(--text);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.28);
+}
+
+.prompt-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.prompt-head h2 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.prompt-close {
+  border: none;
+  background: transparent;
+  color: inherit;
+  font-size: 1rem;
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 8px;
+}
+
+.prompt-close:hover {
+  background: rgba(39, 37, 49, 0.08);
+}
+
+.prompt-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+</style>

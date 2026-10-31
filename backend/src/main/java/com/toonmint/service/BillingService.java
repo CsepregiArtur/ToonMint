@@ -88,6 +88,9 @@ public class BillingService {
     /**
      * Generează linkul RevenueCat pentru un pachet de credite.
      *
+     * <p>Pachetele sunt doar un supliment pentru abonați: fără un abonament activ,
+     * utilizatorul este îndrumat către planuri, nu lăsat să cumpere credite.
+     *
      * <p>Cere o confirmare recentă de checkout: fără ea, consumatorul ar putea cere
      * rambursarea în 14 zile și după ce a consumat creditele.
      */
@@ -102,6 +105,10 @@ public class BillingService {
                     "RevenueCat purchase links are not configured on this environment");
         }
         User user = userService.requireUser(currentUser.id());
+        if (!user.isSubscriptionActive(Instant.now())) {
+            throw new ApiException(HttpStatus.FORBIDDEN, "SUBSCRIPTION_REQUIRED",
+                    "Credit packs are available only with an active subscription");
+        }
         boolean acknowledged = acknowledgements.existsByUserIdAndProductIdAndAcceptedAtAfter(
                 user.getId(), product.id(), Instant.now().minus(ACKNOWLEDGEMENT_VALIDITY));
         if (!acknowledged) {

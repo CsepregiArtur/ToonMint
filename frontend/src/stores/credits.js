@@ -78,15 +78,13 @@ export const useCreditsStore = defineStore('credits', {
     },
 
     // Cere backendului linkul de checkout RevenueCat pentru un pachet de credite.
+    // Fereastra de plată se deschide în componentă, sincron cu click-ul: deschisă
+    // aici, după await-uri, browserul o blochează ca popup.
     async purchase(packId) {
       const snapshot = this.paymentSnapshot(packId)
       await this.acknowledge(packId)
       const { data } = await http.post('/credits/purchase', { packId })
-      if (data.purchaseUrl) {
-        window.open(data.purchaseUrl, '_blank', 'noopener')
-        this.startPaymentWatch(snapshot)
-      }
-      return data
+      return { purchaseUrl: data.purchaseUrl, snapshot }
     },
 
     // Starea de referință față de care detectăm confirmarea plății.

@@ -453,6 +453,8 @@ moment) și apare în exportul de date, ca dovadă pentru consumator.
 
 Returnează `CreditPackResponse` cu `purchaseUrl`. Creditele sunt acordate **numai**
 după ce RevenueCat trimite webhook-ul `NON_RENEWING_PURCHASE`.
+Pachetele sunt un supliment pentru abonați: fără abonament activ (sau cu abonament
+expirat) → `403 SUBSCRIPTION_REQUIRED`, iar UI-ul îndrumă utilizatorul către planuri.
 Dacă lipsește o confirmare din ultimele 30 de minute pentru produsul cerut →
 `428 ACKNOWLEDGEMENT_REQUIRED`. Dacă `REVENUECAT_PURCHASE_LINK_URL` nu este setat →
 `503 PAYMENTS_NOT_CONFIGURED`.

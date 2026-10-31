@@ -242,9 +242,13 @@ export default {
   'credits.plansNote': '1 credit = 1 imagine generată. Perioada și prețul apar pe fiecare plan.',
   'credits.subscribe': 'Abonează-te',
   'credits.packs': 'Pachete de credite',
-  'credits.packsNote': 'Cumperi doar când ai nevoie',
+  'credits.packsNote': 'Disponibil cu abonament activ — cumperi doar când ai nevoie',
   'credits.buy': 'Cumpără',
   'credits.opening': 'Se deschide…',
+  'credits.packsSubscribersOnly.title': 'Pachetele de credite necesită abonament',
+  'credits.packsSubscribersOnly.body':
+    'Pachetele de credite suplimentare sunt disponibile doar cu un abonament activ. Alege mai întâi un plan săptămânal sau anual — după aceea poți cumpăra credite oricând ai nevoie.',
+  'credits.packsSubscribersOnly.cta': 'Vezi planurile de abonament',
   'credits.paymentWaiting':
     'Așteptăm confirmarea plății. Poți lăsa pagina deschisă — creditele apar automat după câteva secunde.',
   'credits.paymentConfirmed': 'Plata a fost confirmată, iar creditele au fost adăugate în cont.',
