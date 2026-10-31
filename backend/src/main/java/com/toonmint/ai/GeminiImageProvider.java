@@ -5,10 +5,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.toonmint.config.AppProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.MediaType;
 import org.springframework.http.client.JdkClientHttpRequestFactory;
-import org.springframework.stereotype.Component;
 import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClient;
@@ -23,8 +21,6 @@ import java.util.Map;
  * Generare de imagini prin Google Gemini (familia Nano Banana). Reîncercările
  * sunt gestionate de {@link RetryExecutor} cu backoff exponențial și jitter.
  */
-@Component
-@ConditionalOnProperty(name = "app.ai.provider", havingValue = "gemini")
 public class GeminiImageProvider implements ImageGenerationProvider {
 
     private static final Logger log = LoggerFactory.getLogger(GeminiImageProvider.class);
@@ -103,10 +99,11 @@ public class GeminiImageProvider implements ImageGenerationProvider {
             return parse(response);
         } catch (HttpStatusCodeException ex) {
             int status = ex.getStatusCode().value();
-            boolean retryable = status == 429 || status >= 500;
-            log.warn("Gemini call failed with HTTP {}: {}", status, ex.getResponseBodyAsString());
-            throw new AiGenerationException("Gemini API rejected the request (HTTP " + status + ")",
-                    retryable, ex);
+            String errorBody = ex.getResponseBodyAsString();
+            boolean dailyQuota = errorBody.contains("PerDay") || errorBody.contains("per day");
+            boolean retryable = (status == 429 && !dailyQuota) || status >= 500;
+            log.warn("Gemini call failed with HTTP {}: {}", status, truncate(errorBody));
+            throw new AiGenerationException(describeFailure(status, errorBody, dailyQuota), retryable, ex);
         } catch (ResourceAccessException ex) {
             log.warn("Gemini call failed: {}", ex.getMessage());
             throw new AiGenerationException("Gemini API is unreachable", true, ex);
@@ -116,6 +113,35 @@ public class GeminiImageProvider implements ImageGenerationProvider {
     /**
      * Extrage imaginea base64 din răspunsul Gemini.
      */
+    /**
+     * Traduce răspunsul de eroare al Gemini într-un mesaj acționabil pentru operator.
+     */
+    private String describeFailure(int status, String body, boolean dailyQuota) {
+        if (dailyQuota) {
+            return "Cota zilnică Gemini este epuizată (" + status + "). "
+                    + "Activează facturarea în Google AI Studio pentru tier-ul plătit "
+                    + "sau încearcă din nou după resetarea cotei.";
+        }
+        if (status == 429) {
+            return "Gemini a limitat temporar cererile (HTTP 429). Reîncerc automat.";
+        }
+        if (status == 400 || status == 403) {
+            return "Gemini a respins cererea (HTTP " + status + "). Verifică GEMINI_API_KEY, "
+                    + "modelul și permisiunile cheii. Detalii: " + truncate(body);
+        }
+        return "Gemini API a răspuns cu eroare HTTP " + status + ".";
+    }
+
+    /**
+     * Scurtează răspunsul de eroare pentru log.
+     */
+    private String truncate(String body) {
+        if (body == null) {
+            return "";
+        }
+        return body.length() > 400 ? body.substring(0, 400) + "…" : body;
+    }
+
     private GeneratedImage parse(String response) {
         try {
             JsonNode root = objectMapper.readTree(response);

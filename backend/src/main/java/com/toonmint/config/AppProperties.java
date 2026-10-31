@@ -21,7 +21,8 @@ public record AppProperties(
         Ai ai,
         Mail mail,
         RevenueCat revenueCat,
-        Admin admin
+        Admin admin,
+        Demo demo
 ) {
 
     /**
@@ -43,10 +44,19 @@ public record AppProperties(
                        int creditsPerJob,
                        long maxInputBytes,
                        int maxOutputDimension,
+                       String stylePreviewBaseUrl,
+                       String stylePreviewOutputDir,
+                       String stylePreviewSource,
+                       long stylePreviewDelayMillis,
+                       int stylePreviewMaxDimension,
+                       int stylePreviewHeroDimension,
                        Map<String, Style> styles) {
 
         /**
          * Un stil de generare: eticheta afișată în UI și promptul trimis către AI.
+         */
+        /**
+         * Un stil: eticheta din UI și promptul trimis către modelul de imagine.
          */
         public record Style(String label, String prompt) {
         }
@@ -87,6 +97,19 @@ public record AppProperties(
      * Contul de operator creat automat la primul start (opțional).
      */
     public record Admin(String email, String password) {
+    }
+
+    /**
+     * Conturi demo pentru dezvoltare: login fără parolă, doar când `enabled` este true.
+     * În producție rămâne dezactivat (profilul `prod` îl forțează pe false).
+     */
+    public record Demo(boolean enabled,
+                       String userEmail,
+                       String userPassword,
+                       int userCredits,
+                       String adminEmail,
+                       String adminPassword,
+                       int adminCredits) {
     }
 
     /**

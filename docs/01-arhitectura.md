@@ -68,6 +68,26 @@ Puncte importante:
    se creează o tranzacție `REFUND` (o singură dată, verificat prin
    `reference_job_id` + `type`), iar soldul revine.
 
+## 3b. Fluxul generării gratuite
+
+```text
+Vizitator                API                       DB                 Worker
+   │  email + poză        │                        │                   │
+   ├─────────────────────►│ validează email + imagine                  │
+   │                      ├── INSERT guest_trials (email UNIQUE) ─────►│
+   │                      ├── INSERT job (trial = true, 0 credite) ───►│
+   │                      ├── cache imagine sursă (TTL 10 min)         │
+   │  202 { publicId }    │                        │                   │
+   │◄─────────────────────┤  (după COMMIT) ────────┼──────────────────►│
+   │  GET /api/public/jobs/{publicId} → COMPLETED │                   │
+   │  GET .../download    │                        │                   │
+```
+
+A doua cerere cu aceeași adresă este respinsă de constrângerea unică pe `guest_trials.email`
+(translatată în `402 TRIAL_ALREADY_USED`), deci nu poate produce o imagine în plus.
+Joburile de trial au `user_id = NULL`, `credits_consumed = 0` și `trial = true`; ele apar
+în consola de operator, dar nu intră în rambursări.
+
 ## 4. Fluxul de plată (RevenueCat)
 
 ```text
@@ -89,6 +109,8 @@ identificator funcționează atât pentru Web Billing, cât și pentru SDK-urile
 ## 5. Schema bazei de date
 
 ```text
+users (0..1) ─< jobs (N)   (joburile de trial nu au user)
+guest_trials (1) ── jobs (1, opțional)
 users (1) ────< jobs (N)
 users (1) ────< credit_transactions (N)
 jobs  (1) ────< credit_transactions (N, opțional)
@@ -101,6 +123,7 @@ users (1) ────< email_messages (N)
 | `users` | conturi, sold curent, abonament | `public_id`, `email` unic, `credit_balance`, `subscription_type`, `subscription_expires_at`, `role` |
 | `jobs` | metadate job-uri (fără imagini) | `user_id`, `style_id`, `status`, `credits_consumed`, `attempts`, `created_at` |
 | `credit_transactions` | ledger-ul de credite (sursa de adevăr) | `amount`, `type`, `reference_job_id`, `external_reference` unic |
+| `guest_trials` | revendicarea generării gratuite | `email` unic, `job_id` |
 | `subscription_events` | jurnal webhook-uri RevenueCat | `event_id` unic, `status`, `payload` |
 | `email_messages` | audit pentru emailuri | `sent_by_user_id`, `recipient_count`, `status` |
 

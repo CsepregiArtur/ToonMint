@@ -17,6 +17,11 @@ spring:
       mail.smtp.auth: true
       mail.smtp.starttls.enable: true
 
+app:
+  demo:
+    # Login cu un click, fără parolă, doar în dezvoltare.
+    enabled: ${DEMO_LOGIN_ENABLED:true}
+
 logging:
   level:
     com.toonmint: DEBUG

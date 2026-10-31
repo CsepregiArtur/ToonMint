@@ -7,6 +7,11 @@ server:
 spring:
   application:
     name: toonmint
+  config:
+    # Încarcă .env din rădăcina repo-ului sau din backend/ (fișierul nu se comite).
+    import:
+      - optional:file:./.env[.properties]
+      - optional:file:../.env[.properties]
   profiles:
     default: dev
   servlet:
@@ -53,31 +58,270 @@ app:
     credits-per-job: 1
     max-input-bytes: 10485760
     max-output-dimension: 1024
+    # Prefixul public al imaginilor de exemplu (servite de frontend).
+    style-preview-base-url: ${STYLE_PREVIEW_BASE_URL:/demo/styles}
+    # Unde se scriu exemplele generate de Gemini și fotografia sursă folosită pentru ele.
+    style-preview-output-dir: ${STYLE_PREVIEW_OUTPUT_DIR:../frontend/public/demo/styles}
+    style-preview-source: ${STYLE_PREVIEW_SOURCE:../frontend/public/demo/before.jpg}
+    # Pauză între două generări de exemplu, ca să nu lovim limita de cereri/minut.
+    style-preview-delay-millis: ${STYLE_PREVIEW_DELAY_MS:2500}
+    # Rezoluțiile scrise pe disc: card în galerie / imaginea mare din hero.
+    style-preview-max-dimension: ${STYLE_PREVIEW_MAX_DIMENSION:640}
+    style-preview-hero-dimension: ${STYLE_PREVIEW_HERO_DIMENSION:1200}
     styles:
       anime_v1:
         label: Anime
         prompt: >-
-          Transform this photograph into a polished anime illustration. Keep the
-          subject, pose and facial expression recognizable, use clean line art,
-          vibrant cel shading and soft highlights. No text, no watermark.
+          Create a trending anime art style image from the uploaded subject. Use
+          confident line-work with slight variation and minimal cel shading using flat
+          shadow shapes. Use bright, saturated colors and clean graphic lighting. The
+          style is defined by exaggerated, cartoonish character proportions featuring
+          highly expressive, simplistic facial features that allow for immense emotional
+          range, with highly varied stretched anatomy. Transform the environment into a
+          slightly warped space with playful perspective distortion and simplified
+          objects. Composition and tone should be energetic, lively, and comedic in a
+          fully stylized, non-realistic world.
+      manga_bw:
+        label: Manga (B&W)
+        prompt: >-
+          Create a black-and-white manga panel from the uploaded subject. Use precise
+          high-contrast inking with tapering line weight, dense screentone hatching and
+          pure black shadow masses. Rendering is strictly monochrome, with white gouache
+          highlights and dramatic rim light. Faces are highly expressive, with large
+          emotive eyes, minimal nose and mouth detail and hair drawn as sharp spiky
+          strands. Collapse the environment into abstract speed lines or simplified
+          architecture with bold perspective. Composition should feel tense and
+          cinematic and read instantly in grayscale, in a fully stylized, non-realistic
+          world.
+      chibi:
+        label: Chibi
+        prompt: >-
+          Create a chibi character illustration from the uploaded subject. Keep the
+          subject recognizable while reshaping them into a two-head-tall figure with an
+          oversized head, tiny body, stubby limbs and huge sparkling eyes. Use thick
+          rounded outlines, soft cel shading with pastel gradients, glossy highlights
+          and a candy-like palette. Shrink props and the environment into cute miniature
+          versions with rounded corners and simple shapes. Composition is centered,
+          playful and sticker-like, in a fully stylized, non-realistic world.
+      webtoon:
+        label: Webtoon
+        prompt: >-
+          Create a Korean webtoon style image from the uploaded subject. Use delicate
+          uniform line art, soft airbrushed gradients, translucent skin shading and
+          glossy hair highlights. Colors are clean and pastel-leaning with gentle warm
+          light and subtle bloom. Characters have idealized proportions, expressive
+          almond eyes and neat, fashion-forward styling. Backgrounds are softly blurred
+          with simple shapes and bokeh. Composition is airy and romantic, in a fully
+          stylized, non-realistic world.
       cartoon_v2:
         label: Cartoon
         prompt: >-
-          Redraw this photograph as a friendly modern cartoon. Keep the subject
-          and composition, simplify details, use bold outlines and warm, cheerful
-          colors. No text, no watermark.
-      pixel_v3:
-        label: Pixel art
+          Create a modern cartoon character image from the uploaded subject. Use bold
+          confident outlines of varied weight, simple shapes and friendly exaggerated
+          features. Shading is flat with a single soft shadow tone and a warm highlight,
+          and the palette is cheerful and saturated under clean graphic lighting.
+          Anatomy is simplified and springy, with slightly oversized hands and
+          expressions. Reduce the environment to a few readable shapes with soft depth.
+          Composition is open, welcoming and humorous, in a fully stylized,
+          non-realistic world.
+      retro_90s:
+        label: 90s cartoon
         prompt: >-
-          Convert this photograph into detailed 16-bit pixel art. Preserve the
-          subject and silhouette, use a limited retro palette and crisp pixel
-          edges. No text, no watermark.
+          Create a 1990s TV cartoon still from the uploaded subject. Use wobbly
+          hand-inked outlines, flat saturated colors, simple painted backgrounds and
+          subtle film grain. Shading is minimal with hard shadow shapes and slightly
+          off-register color separation. Characters have elastic proportions,
+          exaggerated grins and rubbery limbs. The set is a cozy, slightly cluttered
+          room built from chunky shapes. Composition feels like a frame from a
+          Saturday-morning show, in a fully stylized, non-realistic world.
       comic_v4:
         label: Comic book
         prompt: >-
-          Recreate this photograph as a comic book panel. Preserve the subject and
-          framing, use dynamic ink lines, halftone shading and saturated colors.
-          No text, no watermark.
+          Create a comic book panel from the uploaded subject. Use dynamic ink
+          brushwork, heavy blacks, cross-hatching and visible halftone dot shading.
+          Colors are saturated primaries with dramatic colored lighting and strong rim
+          accents. Characters have heroic angular anatomy, expressive faces and
+          wind-swept hair. The background uses bold perspective, speed lines and
+          simplified city or interior shapes. Composition is punchy and cinematic, in a
+          fully stylized, non-realistic world.
+      caricature:
+        label: Caricature
+        prompt: >-
+          Create a good-humoured caricature from the uploaded subject. Exaggerate the
+          most characteristic facial features — nose, jaw, eyes, hair — while keeping
+          the person instantly recognizable. Use smooth digital painting with soft
+          gradients, glossy highlights and clean outlines. Colors are vibrant and
+          flattering, with warm key light and a cool rim light. Stretch the body into
+          playful, elastic proportions. Background is a simple studio vignette. Tone is
+          affectionate and comedic, in a fully stylized, non-realistic world.
+      storybook:
+        label: Storybook
+        prompt: >-
+          Create a children's storybook illustration from the uploaded subject. Use soft
+          hand-painted gouache textures, a gentle pencil underdrawing and warm pastel
+          colors. Shading is rounded and soft with visible brush strokes and paper
+          grain. Characters are gentle and rounded with kind, simple faces. The
+          environment becomes a cozy illustrated world with simplified foliage and
+          furniture. Composition is calm, warm and narrative, in a fully stylized,
+          non-realistic world.
+      pixel_v3:
+        label: Pixel art
+        prompt: >-
+          Create detailed 16-bit pixel art from the uploaded subject. Use a limited
+          retro palette with crisp pixel edges, dithering for gradients and hard
+          one-pixel outlines. Lighting is rendered with stepped color ramps and small
+          specular highlights. Characters have chunky readable silhouettes and
+          expressive pixel faces. Build the environment from tile-like shapes with
+          layered depth. Composition reads clearly at small sizes, in a fully stylized,
+          non-realistic world.
+      vector_flat:
+        label: Flat vector
+        prompt: >-
+          Create flat vector artwork from the uploaded subject. Use clean geometric
+          shapes, uniform strokes and no gradients — only flat color fills. The palette
+          is a modern limited set of harmonious hues with one accent color. Simplify
+          anatomy into rounded geometric forms and faces into minimal features. Reduce
+          the environment to overlapping flat shapes and simple shadow blocks.
+          Composition is graphic, balanced and poster-like, in a fully stylized,
+          non-realistic world.
+      pop_art:
+        label: Pop art
+        prompt: >-
+          Create a 1960s pop-art screen print from the uploaded subject. Use bold black
+          contour lines, flat blocks of primary color, Ben-Day dot patterns and slight
+          registration offsets. Shading is expressed only as dots or solid tones.
+          Character features are simplified and graphic, with strong graphic eyes and
+          lips. The background is a flat saturated field or a repeated pattern.
+          Composition is punchy and iconic, in a fully stylized, non-realistic world.
+      low_poly:
+        label: Low poly
+        prompt: >-
+          Create a low-poly geometric illustration from the uploaded subject. Build the
+          image from clearly visible flat triangular facets with subtle gradient shading
+          per facet. The palette is harmonized with cool shadows and warm highlights.
+          Simplify anatomy into faceted planes while keeping the pose readable.
+          Construct the environment from the same facet language. Composition is
+          sculptural and modern, in a fully stylized, non-realistic world.
+      isometric:
+        label: Isometric 3D
+        prompt: >-
+          Create a clean isometric 3D illustration from the uploaded subject. Use simple
+          rounded geometry, soft studio lighting and ambient occlusion in the corners.
+          The palette is pastel with a single saturated accent. Characters are stylized
+          figurines with smooth simplified features. Turn the environment into a
+          miniature diorama on an isometric grid with tidy props. Composition is orderly
+          and charming, in a fully stylized, non-realistic world.
+      claymation:
+        label: Claymation
+        prompt: >-
+          Create a claymation-style render from the uploaded subject. Everything looks
+          sculpted from plasticine: visible fingerprint texture, slightly uneven shapes,
+          matte surfaces and tiny hand-made imperfections. Lighting is soft studio light
+          with warm bounce and shallow depth of field on a miniature set. Characters
+          have rounded, hand-modelled features and simple expressive faces. Composition
+          looks like a stop-motion frame, in a fully stylized, non-realistic world.
+      lego:
+        label: Brick figure
+        prompt: >-
+          Create a buildable brick-toy scene from the uploaded subject. Rebuild the
+          subject from glossy plastic bricks and studs with visible seams and slightly
+          chunky proportions. Lighting is bright toy-studio light with crisp specular
+          highlights and soft contact shadows. The palette is vivid and limited to
+          classic brick colors. Build the environment as a miniature brick set.
+          Composition is playful and toy-like, in a fully stylized, non-realistic world.
+      watercolor:
+        label: Watercolor
+        prompt: >-
+          Create a loose watercolor painting from the uploaded subject. Use transparent
+          washes, wet-on-wet bleeding, granulating pigment and visible paper texture.
+          Edges are soft and sometimes broken, with a few confident dark accents. The
+          palette is light and airy with one stronger focal color. Anatomy stays natural
+          but slightly simplified, and the background dissolves into washes. Composition
+          is spontaneous and delicate, in a fully stylized, non-realistic world.
+      oil_painting:
+        label: Oil painting
+        prompt: >-
+          Create a classical oil painting from the uploaded subject. Use visible impasto
+          brushwork, rich layered glazes and canvas texture. Lighting is dramatic
+          chiaroscuro with a warm key light and deep shadow. The palette is earthy and
+          luminous. Anatomy follows classical proportions with softly modelled forms and
+          expressive eyes. The background is a dark painterly interior or landscape.
+          Composition is dignified and museum-like, in a fully stylized, non-realistic
+          world.
+      pencil_sketch:
+        label: Pencil sketch
+        prompt: >-
+          Create a graphite pencil sketch from the uploaded subject. Use confident
+          graphite strokes, cross-hatching for shadow, soft smudging and the visible
+          tooth of the paper. Rendering is monochrome with a few darker accents at the
+          focal point. Anatomy is natural, with careful construction lines left slightly
+          visible. The background stays loose and unfinished. Composition feels like a
+          page from a sketchbook, in a fully stylized, non-realistic world.
+      ink_lineart:
+        label: Ink line art
+        prompt: >-
+          Create clean ink line art from the uploaded subject. Use confident black
+          linework of varying weight, minimal hatching and open shapes where negative
+          space does the work. There is no shading beyond a few hatch clusters. The
+          palette is ink black on warm off-white paper. Anatomy is simplified and
+          elegant with expressive contour lines. The background reduces to a few
+          suggestive strokes. Composition is airy and graphic, in a fully stylized,
+          non-realistic world.
+      paper_cut:
+        label: Paper cutout
+        prompt: >-
+          Create layered paper-cut art from the uploaded subject. Every element is a
+          crisp cut-paper shape with subtle drop shadows and visible layer depth. The
+          palette is warm and limited, with textured colored-paper tones. Simplify
+          anatomy into bold silhouettes and overlapping planes. Build the environment
+          from stacked paper shapes. Composition is tactile, craft-like and decorative,
+          in a fully stylized, non-realistic world.
+      graffiti:
+        label: Graffiti
+        prompt: >-
+          Create a graffiti mural from the uploaded subject. Use spray-paint texture,
+          thick outlines, drips and overspray on a concrete wall. The palette is vivid
+          and high-contrast with neon accents. Characters are stylized with bold flat
+          colors and exaggerated features. Merge brick texture with abstract spray
+          shapes in the background. Composition is energetic and street-art-like, in a
+          fully stylized, non-realistic world.
+      cyberpunk:
+        label: Cyberpunk
+        prompt: >-
+          Create a cyberpunk portrait from the uploaded subject. Use neon rim lighting
+          in magenta and cyan, wet reflective surfaces, volumetric haze and glowing
+          accents. The palette is dark with saturated neon highlights and deep teal
+          shadows. Add subtle tech details — collar lights, reflective fabric, small
+          glowing elements. The environment becomes a rainy night city where signs read
+          as abstract glow rather than legible text. Composition is moody and cinematic,
+          in a fully stylized, non-realistic world.
+      vaporwave:
+        label: Vaporwave
+        prompt: >-
+          Create vaporwave aesthetic art from the uploaded subject. Use pastel pink and
+          teal gradients, soft glow, a retro grid floor, chrome accents and subtle VHS
+          grain. Colors are washed and dreamy with magenta highlights. Render the
+          subject with smooth, slightly airbrushed shading. Mix classical statues and
+          neon sunsets as abstract shapes in the environment. Composition is nostalgic
+          and surreal, in a fully stylized, non-realistic world.
+      fantasy:
+        label: Fantasy illustration
+        prompt: >-
+          Create an epic fantasy illustration from the uploaded subject. Use painterly
+          rendering with rich glazes, dramatic backlight and atmospheric depth. Add
+          ornate clothing, subtle runes and glowing motes. The palette is deep and
+          jewel-toned with luminous highlights. Anatomy is heroic and expressive. The
+          environment becomes a vast misty landscape or an ancient hall. Composition is
+          grand and mythic, in a fully stylized, non-realistic world.
+      renaissance:
+        label: Renaissance portrait
+        prompt: >-
+          Create a Renaissance oil portrait from the uploaded subject. Use accurate
+          proportions, soft directional light from the upper left, sfumato transitions
+          and muted earthy pigments with craquelure texture. Render fabric and hair with
+          patient detail. The background is a dark neutral wall or a distant landscape.
+          Composition is a formal three-quarter view with dignified calm, in a fully
+          stylized, non-realistic world.
   rate-limit:
     enabled: true
     backend: ${RATE_LIMIT_BACKEND:memory}
@@ -87,7 +331,8 @@ app:
     ttl: PT10M
     max-entries: 2000
   ai:
-    provider: ${AI_PROVIDER:stub}
+    # auto = Gemini dacă există GEMINI_API_KEY, altfel providerul offline `stub`.
+    provider: ${AI_PROVIDER:auto}
     api-key: ${GEMINI_API_KEY:}
     model: ${GEMINI_IMAGE_MODEL:gemini-3.1-flash-image}
     base-url: ${GEMINI_BASE_URL:https://generativelanguage.googleapis.com}
@@ -124,3 +369,12 @@ app:
   admin:
     email: ${ADMIN_EMAIL:}
     password: ${ADMIN_PASSWORD:}
+  demo:
+    # Login demo pentru dezvoltare: activat implicit doar în profilul `dev`.
+    enabled: ${DEMO_LOGIN_ENABLED:false}
+    user-email: ${DEMO_USER_EMAIL:demo@toonmint.local}
+    user-password: ${DEMO_USER_PASSWORD:demo12345}
+    user-credits: ${DEMO_USER_CREDITS:25}
+    admin-email: ${DEMO_ADMIN_EMAIL:operator@toonmint.local}
+    admin-password: ${DEMO_ADMIN_PASSWORD:operator12345}
+    admin-credits: ${DEMO_ADMIN_CREDITS:100}

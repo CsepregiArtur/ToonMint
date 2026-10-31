@@ -3,8 +3,6 @@ package com.toonmint.ai;
 import com.toonmint.config.AppProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.stereotype.Component;
 
 import javax.imageio.ImageIO;
 import java.awt.Color;
@@ -18,8 +16,6 @@ import java.io.IOException;
  * Provider offline pentru dezvoltare și teste: aplică un filtru posterize, ca
  * fluxul complet să poată fi testat fără o cheie Gemini.
  */
-@Component
-@ConditionalOnProperty(name = "app.ai.provider", havingValue = "stub", matchIfMissing = true)
 public class StubImageProvider implements ImageGenerationProvider {
 
     private static final Logger log = LoggerFactory.getLogger(StubImageProvider.class);

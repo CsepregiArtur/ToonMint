@@ -57,6 +57,31 @@ export const useAuthStore = defineStore('auth', {
       }
     },
 
+    // Login demo (doar în dezvoltare): un click, fără parolă.
+    async demoLogin(role = 'USER') {
+      this.loading = true
+      this.error = ''
+      try {
+        const { data } = await http.post('/auth/demo-login', { role })
+        this.applySession(data)
+      } catch (error) {
+        this.error = error.message
+        throw error
+      } finally {
+        this.loading = false
+      }
+    },
+
+    // Verifică dacă backendul rulează cu login demo activat.
+    async demoAvailable() {
+      try {
+        const { data } = await http.get('/auth/demo-login')
+        return data
+      } catch (error) {
+        return null
+      }
+    },
+
     // Reîncarcă profilul curent (credite, tip abonament) de la server.
     async loadProfile() {
       if (!this.token) {

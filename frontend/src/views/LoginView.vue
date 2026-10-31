@@ -1,5 +1,5 @@
 <script setup>
-import { ref } from 'vue'
+import { onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 
@@ -9,10 +9,37 @@ const router = useRouter()
 const route = useRoute()
 
 const mode = ref('login')
+const demo = ref(null)
+const demoBusy = ref('')
 const email = ref('')
 const password = ref('')
 const displayName = ref('')
 const localError = ref('')
+
+// Intră instant cu un cont demo (doar când backendul rulează în dezvoltare).
+async function useDemo(role) {
+  localError.value = ''
+  demoBusy.value = role
+  try {
+    await auth.demoLogin(role)
+    await router.push(route.query.redirect || (role === 'ADMIN' ? '/admin' : '/studio'))
+  } catch (error) {
+    localError.value = error.message
+  } finally {
+    demoBusy.value = ''
+  }
+}
+
+// La montare: pornim în modul cerut de link și aflăm dacă login-ul demo e disponibil.
+onMounted(async () => {
+  if (route.query.mode === 'register') {
+    mode.value = 'register'
+  }
+  if (route.query.redirect) {
+    demo.value = null
+  }
+  demo.value = await auth.demoAvailable()
+})
 
 // Comută între formularul de login și cel de înregistrare.
 function switchMode(next) {
@@ -86,6 +113,21 @@ async function submit() {
           {{ auth.loading ? 'Se procesează…' : mode === 'login' ? 'Intră în cont' : 'Creează contul' }}
         </button>
       </form>
+
+      <div v-if="demo" class="demo-block">
+        <div class="divider"><span>sau intră instant în dezvoltare</span></div>
+        <div class="demo-buttons">
+          <button class="btn ghost" :disabled="Boolean(demoBusy)" @click="useDemo('USER')">
+            {{ demoBusy === 'USER' ? 'Se deschide…' : 'Cont demo' }}
+          </button>
+          <button class="btn ghost" :disabled="Boolean(demoBusy)" @click="useDemo('ADMIN')">
+            {{ demoBusy === 'ADMIN' ? 'Se deschide…' : 'Operator demo' }}
+          </button>
+        </div>
+        <p class="muted small">
+          Login demo activat de server (profilul <code>dev</code>). Fără parolă, doar pentru testare.
+        </p>
+      </div>
 
       <p class="muted small">
         Datele tale sunt procesate temporar: imaginile nu sunt păstrate pe server.

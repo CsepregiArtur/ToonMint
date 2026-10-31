@@ -28,6 +28,11 @@ spring:
 app:
   jwt:
     secret: ${JWT_SECRET}
+  demo:
+    enabled: false
+  ai:
+    # În producție generarea se face exclusiv cu Gemini.
+    provider: ${AI_PROVIDER:gemini}
   rate-limit:
     backend: ${RATE_LIMIT_BACKEND:redis}
   temp-store:

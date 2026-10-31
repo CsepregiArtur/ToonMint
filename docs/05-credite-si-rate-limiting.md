@@ -13,6 +13,7 @@ că marja rămâne pozitivă. Rate limiting-ul protejează infrastructura de abu
 | Credite pachet suplimentar | 20 | idem |
 | Cereri pe minut per utilizator | 10 | `app.rate-limit.requests-per-minute` |
 | TTL imagine în cache | 10 minute | `app.temp-store.ttl` |
+| Generări gratuite per email | 1 | `guest_trials.email` (UNIQUE) |
 
 ## 2. Fluxul unui credit
 
@@ -39,6 +40,22 @@ soldul nu poate deveni negativ.
 Rambursarea este idempotentă: `CreditService.refund` verifică
 `existsByReferenceJobIdAndType(jobId, REFUND)` înainte de a credita, deci un job nu
 poate fi rambursat de două ori (nici la retry, nici la marcare manuală `FAILED`).
+
+## 2b. Generarea gratuită
+
+Prima imagine a unui vizitator nu consumă credite: jobul are `credits_consumed = 0` și
+`trial = true`. Protecția nu vine din sold, ci din **constrângerea unică pe `guest_trials.email`**.
+
+| Situație | Rezultat |
+|---|---|
+| adresă nouă | job creat, 1 imagine, fără cont |
+| aceeași adresă, a doua cerere | `402 TRIAL_ALREADY_USED` |
+| două cereri simultane, aceeași adresă | una reușește, cealaltă primește 402 |
+| adresa are cont și abonament | nu mai contează trial-ul; consumă credite |
+
+Din perspectiva profitului, trial-ul este un cost de achiziție: costul AI al unei imagini
+(~0.034 USD) este acceptat o singură dată per adresă. Pentru a limita abuzul cu multe
+adrese, cererea este limitată și per IP (`trial-ip:<ip>`) cu aceeași limită pe minut.
 
 ## 3. Rate limiting
 

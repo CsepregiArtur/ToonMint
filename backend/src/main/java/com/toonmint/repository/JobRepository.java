@@ -54,11 +54,12 @@ public interface JobRepository extends JpaRepository<Job, Long> {
 
     @EntityGraph(attributePaths = "user")
     @Query("""
-            select j from Job j join j.user u
+            select j from Job j left join j.user u
             where lower(j.styleId) like lower(concat('%', :keyword, '%'))
                or lower(j.status) like lower(concat('%', :keyword, '%'))
                or lower(coalesce(j.errorMessage, '')) like lower(concat('%', :keyword, '%'))
-               or lower(u.email) like lower(concat('%', :keyword, '%'))
+               or lower(coalesce(j.guestEmail, '')) like lower(concat('%', :keyword, '%'))
+               or lower(coalesce(u.email, '')) like lower(concat('%', :keyword, '%'))
             order by j.createdAt desc
             """)
     /**

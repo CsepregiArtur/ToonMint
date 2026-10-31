@@ -1,6 +1,7 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useJobsStore } from '../stores/jobs'
+import StylePicker from './StylePicker.vue'
 import { useAuthStore } from '../stores/auth'
 
 // Evenimentul `created` anunță pagina părinte că un job nou a fost trimis.
@@ -127,14 +128,10 @@ onBeforeUnmount(() => {
       </label>
 
       <div class="uploader-controls">
-        <label class="field">
-          <span>Stil</span>
-          <select v-model="styleId">
-            <option v-for="style in jobsStore.styles" :key="style.id" :value="style.id">
-              {{ style.label }}
-            </option>
-          </select>
-        </label>
+        <div class="field">
+          <span>Stil ({{ jobsStore.styles.length }} disponibile)</span>
+          <StylePicker v-model="styleId" :styles="jobsStore.styles" />
+        </div>
 
         <p class="hint">Fiecare generare consumă 1 credit. Dacă AI-ul eșuează, creditul se returnează automat.</p>
 

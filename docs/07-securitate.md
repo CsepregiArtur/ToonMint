@@ -16,6 +16,7 @@ Reguli de acces (`SecurityConfig`):
 |---|---|
 | `/api/auth/**`, `POST /api/users` | public |
 | `POST /api/webhooks/revenuecat` | public, dar validat prin token dedicat |
+| `/api/public/**` | public (trial limitat per email și IP) |
 | `/api/admin/**` | `ROLE_ADMIN` |
 | `/swagger-ui/**`, `/v3/api-docs/**`, `/actuator/health` | public |
 | restul | autentificat |
@@ -48,6 +49,20 @@ Autorizarea la nivel de obiect este explicită în servicii:
 | Consum dublu de credite | `SELECT ... FOR UPDATE` pe rândul utilizatorului |
 | Dublă rambursare | verificare `reference_job_id` + tip `REFUND` |
 | Suprapunere de credite la webhook | cheie unică pe event id |
+
+## 3b. Generarea gratuită și login-ul demo
+
+- Trial-ul este limitat de `guest_trials.email` (UNIQUE) și de rate limiting per email
+  și per IP. Nu este o barieră anti-fraudă completă: o persoană cu multe adrese poate
+  obține mai multe imagini. Pentru lansare publică se recomandă verificarea emailului
+  sau un captcha.
+- `publicId` (UUID v4) este singurul „token” al unui job de trial: nu este ghicibil, dar
+  nici revocabil. Expiră practic odată cu cache-ul imaginii (10 minute).
+- Joburile de trial nu au utilizator; ele apar în consola de operator cu `guestEmail`
+  pentru eventuale investigații de abuz.
+- `POST /api/auth/demo-login` emite token valid **fără parolă**. Există doar când
+  `app.demo.enabled=true`, iar profilul `prod` forțează valoarea pe `false`, deci ruta
+  nu este înregistrată în producție. Nu activa această proprietate pe un mediu public.
 
 ## 4. Date și confidențialitate
 
@@ -93,3 +108,5 @@ Autorizarea la nivel de obiect este explicită în servicii:
 - Rate limiting-ul este per utilizator autentificat; endpoint-urile publice
   (`/api/auth/login`) nu au limitare separată — recomandat să adaugi un bucket pe IP.
 - Imaginea originală nu este stocată, deci nu poate fi auditată conținutul după fapt.
+- Adresele din `guest_trials` sunt date personale: păstrează doar emailul și momentul, iar
+  la cerere șterge rândul (nu este folosit în alt scop decât limitarea trial-ului).

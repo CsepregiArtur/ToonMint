@@ -32,6 +32,7 @@ Toate erorile au același corp:
 | `410` | imaginea temporară a expirat (`IMAGE_EXPIRED`, `SOURCE_IMAGE_EXPIRED`) |
 | `413` | imagine peste limita de dimensiune |
 | `429` | rate limit depășit; răspunsul conține header `Retry-After` |
+| `402 TRIAL_ALREADY_USED` | adresa a folosit deja imaginea gratuită |
 | `503` | plăți neconfigurate pe mediul curent |
 
 ### Paginare
@@ -86,10 +87,61 @@ Endpoint-urile de listare acceptă `page` (0-based) și `size` (max 100) și ret
 
 Returnează același format ca la register. `401 INVALID_CREDENTIALS` la date greșite.
 
+### Login demo (doar în dezvoltare)
+
+`GET /api/auth/demo-login` → `{ "available": true, "accounts": [...] }`
+
+`POST /api/auth/demo-login` cu `{}` (cont demo) sau `{ "role": "ADMIN" }` (operator) →
+același `AuthResponse` ca la login. Endpoint-ul nu există când `app.demo.enabled=false`
+(profilul `prod`).
+
 ### `POST /api/users`
 
 Creează un utilizator (echivalentul public al înregistrării), fără a emite token.
 `201 Created` cu `UserResponse`.
+
+## 2b. Generare gratuită (fără cont)
+
+Nu necesită token. Identificatorul public al jobului (`UUID`) funcționează ca token de acces.
+
+### `GET /api/public/trial/eligibility?email=...`
+
+```json
+{ "eligible": true }
+```
+
+### `POST /api/public/trial` (multipart)
+
+```bash
+curl -X POST http://localhost:8080/api/public/trial \
+  -F "email=tu@exemplu.com" \
+  -F "style_id=anime_v1" \
+  -F "image=@photo.png"
+```
+
+`202 Accepted` cu `JobResponse` (`trial: true`, `creditsConsumed: 0`, `userId: null`).
+Varianta JSON acceptă `{ "email": "...", "styleId": "...", "imageBase64": "..." }`.
+
+Erori:
+
+| Status | Cod | Când |
+|---|---|---|
+| `400` | `BAD_REQUEST` | email invalid, imagine lipsă/nesuportată, stil necunoscut |
+| `402` | `TRIAL_ALREADY_USED` | adresa a primit deja imaginea gratuită |
+| `413` | `IMAGE_TOO_LARGE` | imagine peste limita configurată |
+| `429` | `RATE_LIMIT_EXCEEDED` | prea multe cereri de pe aceeași adresă sau IP |
+
+Răspunsul pentru `TRIAL_ALREADY_USED` include `details.subscribeEndpoint`
+(`/billing/catalog`) și `details.registerEndpoint` (`/auth/register`).
+
+### `GET /api/public/jobs/{publicId}`
+
+Statusul jobului gratuit. `404 NOT_FOUND` dacă identificatorul nu există.
+
+### `GET /api/public/jobs/{publicId}/download`
+
+Imaginea generată, cât timp mai există în cache (TTL 10 minute).
+`410 IMAGE_EXPIRED` după expirare, `409 JOB_NOT_COMPLETED` înainte de finalizare.
 
 ## 3. Utilizatori
 
@@ -111,16 +163,69 @@ Exemplu `PUT /api/users/1`:
 
 ### `GET /api/styles`
 
+Returnează toate stilurile disponibile (26 în configurația livrată), sortate în ordinea
+din `application.yml`. Fiecare intrare are `id`, `label` și `previewUrl` — imaginea de
+exemplu a rezultatului în acel stil (servită de frontend, prefix configurabil prin
+`app.jobs.style-preview-base-url`):
+
 ```json
 [
-  { "id": "anime_v1", "label": "Anime" },
-  { "id": "cartoon_v2", "label": "Cartoon" },
-  { "id": "pixel_v3", "label": "Pixel art" },
-  { "id": "comic_v4", "label": "Comic book" }
+  { "id": "anime_v1", "label": "Anime", "previewUrl": "/demo/styles/anime_v1.jpg" },
+  { "id": "manga_bw", "label": "Manga (B&W)", "previewUrl": "/demo/styles/manga_bw.jpg" },
+  { "id": "chibi", "label": "Chibi", "previewUrl": "/demo/styles/chibi.jpg" },
+  { "id": "webtoon", "label": "Webtoon", "previewUrl": "/demo/styles/webtoon.jpg" },
+  { "id": "cartoon_v2", "label": "Cartoon", "previewUrl": "/demo/styles/cartoon_v2.jpg" },
+  { "id": "retro_90s", "label": "90s cartoon", "previewUrl": "/demo/styles/retro_90s.jpg" },
+  { "id": "comic_v4", "label": "Comic book", "previewUrl": "/demo/styles/comic_v4.jpg" },
+  { "id": "caricature", "label": "Caricature", "previewUrl": "/demo/styles/caricature.jpg" },
+  { "id": "storybook", "label": "Storybook", "previewUrl": "/demo/styles/storybook.jpg" },
+  { "id": "pixel_v3", "label": "Pixel art", "previewUrl": "/demo/styles/pixel_v3.jpg" },
+  { "id": "vector_flat", "label": "Flat vector", "previewUrl": "/demo/styles/vector_flat.jpg" },
+  { "id": "pop_art", "label": "Pop art", "previewUrl": "/demo/styles/pop_art.jpg" },
+  { "id": "low_poly", "label": "Low poly", "previewUrl": "/demo/styles/low_poly.jpg" },
+  { "id": "isometric", "label": "Isometric 3D", "previewUrl": "/demo/styles/isometric.jpg" },
+  { "id": "claymation", "label": "Claymation", "previewUrl": "/demo/styles/claymation.jpg" },
+  { "id": "lego", "label": "Brick figure", "previewUrl": "/demo/styles/lego.jpg" },
+  { "id": "watercolor", "label": "Watercolor", "previewUrl": "/demo/styles/watercolor.jpg" },
+  { "id": "oil_painting", "label": "Oil painting", "previewUrl": "/demo/styles/oil_painting.jpg" },
+  { "id": "pencil_sketch", "label": "Pencil sketch", "previewUrl": "/demo/styles/pencil_sketch.jpg" },
+  { "id": "ink_lineart", "label": "Ink line art", "previewUrl": "/demo/styles/ink_lineart.jpg" },
+  { "id": "paper_cut", "label": "Paper cutout", "previewUrl": "/demo/styles/paper_cut.jpg" },
+  { "id": "graffiti", "label": "Graffiti", "previewUrl": "/demo/styles/graffiti.jpg" },
+  { "id": "cyberpunk", "label": "Cyberpunk", "previewUrl": "/demo/styles/cyberpunk.jpg" },
+  { "id": "vaporwave", "label": "Vaporwave", "previewUrl": "/demo/styles/vaporwave.jpg" },
+  { "id": "fantasy", "label": "Fantasy illustration", "previewUrl": "/demo/styles/fantasy.jpg" },
+  { "id": "renaissance", "label": "Renaissance portrait", "previewUrl": "/demo/styles/renaissance.jpg" }
 ]
 ```
 
-Stilurile și prompturile lor sunt definite în `application.yml` → `app.jobs.styles`.
+Stilurile, prompturile și prefixul imaginilor de exemplu sunt definite în `application.yml`
+→ `app.jobs.styles` / `app.jobs.style-preview-base-url`.
+
+#### Structura unui prompt de stil
+
+Fiecare prompt urmează aceeași schemă, ca rezultatele să fie previzibile între stiluri:
+
+1. **subiect + mediu** — „Create a <stil> image from the uploaded subject.”;
+2. **tehnica de linie și umbră** — tip de contur, hașură, cel shading, screentone;
+3. **paletă și lumină** — culori, contrast, direcția luminii;
+4. **anatomie și expresie** — proporții, trăsături, grad de exagerare;
+5. **mediul** — cum se transformă fundalul și obiectele;
+6. **compoziție și ton** — energie, cadru, plus „fully stylized, non-realistic world”.
+
+Fotografia încărcată este trimisă modelului ca imagine de referință (`inlineData`), deci
+promptul descrie doar transformarea, nu conținutul pozei. Exemplu (stilul `anime_v1`):
+
+```text
+Create a trending anime art style image from the uploaded subject. Use confident
+line-work with slight variation and minimal cel shading using flat shadow shapes.
+Use bright, saturated colors and clean graphic lighting. ... Composition and tone
+should be energetic, lively, and comedic in a fully stylized, non-realistic world.
+``` Dacă prefixul este gol,
+`previewUrl` este `null` și UI-ul afișează doar eticheta.
+`style_id` trimis la creare trebuie să fie unul dintre id-urile acestei liste; altfel
+răspunsul este `400 BAD_REQUEST`. Adăugarea unui stil nou nu necesită modificări de cod —
+doar o intrare nouă în configurație (id, `label`, `prompt`).
 
 ## 5. Job-uri
 
@@ -148,6 +253,8 @@ Ambele variante răspund `202 Accepted`:
   "id": 42,
   "publicId": "9e2f...",
   "userId": 1,
+  "guestEmail": null,
+  "trial": false,
   "styleId": "anime_v1",
   "styleLabel": "Anime",
   "status": "PENDING",
@@ -337,6 +444,37 @@ Detalii de configurare: [03 – Plăți RevenueCat](03-plati-revenuecat.md).
 ### `GET /api/admin/users?page=&size=`
 
 Listă de utilizatori pentru selectarea destinatarilor.
+
+### `GET /api/admin/style-previews`
+
+```json
+{
+  "provider": "gemini:gemini-3.1-flash-image",
+  "outputDir": "/.../frontend/public/demo/styles",
+  "source": "/.../frontend/public/demo/before.jpg",
+  "present": ["anime_v1"],
+  "missing": ["manga_bw", "chibi"],
+  "generativeProvider": true
+}
+```
+
+### `POST /api/admin/style-previews/regenerate?missingOnly=true&limit=0`
+
+Generează exemplele lipsă (sau pe cele din body) cu providerul AI configurat și le
+scrie ca `<style-id>.jpg` în folderul servit de frontend.
+
+```json
+{ "provider": "gemini:gemini-3.1-flash-image",
+  "outputDir": "/.../frontend/public/demo/styles",
+  "generated": ["anime_v1", "manga_bw"],
+  "failed": [] }
+```
+
+- `missingOnly` (implicit `true`) — sare peste cele existente;
+- `limit` — numărul maxim de imagini într-o rulare (0 = toate);
+- body opțional: `{ "styles": ["anime_v1"] }`;
+- `409 PREVIEW_REQUIRES_AI_PROVIDER` dacă `AI_PROVIDER=stub`;
+- `409 PREVIEW_SOURCE_MISSING` dacă lipsește fotografia sursă.
 
 ### `GET /api/admin/revenuecat-events?page=&size=`
 

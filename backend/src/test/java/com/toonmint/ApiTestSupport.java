@@ -117,6 +117,22 @@ abstract class ApiTestSupport {
         throw new AssertionError("Job " + jobId + " did not reach " + expected + ", last state: " + last);
     }
 
+    protected JsonNode awaitGuestJob(String publicId, String expected, Duration timeout) throws Exception {
+        Instant deadline = Instant.now().plus(timeout);
+        JsonNode last = null;
+        while (Instant.now().isBefore(deadline)) {
+            String body = mockMvc.perform(get("/api/public/jobs/" + publicId))
+                    .andExpect(status().isOk())
+                    .andReturn().getResponse().getContentAsString();
+            last = objectMapper.readTree(body);
+            if (expected.equals(last.path("status").asText())) {
+                return last;
+            }
+            Thread.sleep(25);
+        }
+        throw new AssertionError("Guest job " + publicId + " did not reach " + expected + ", last: " + last);
+    }
+
     protected record RegisterPayload(String email, String password, String displayName) {
     }
 }

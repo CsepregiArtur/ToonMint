@@ -23,6 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.UUID;
 
 @Service
 public class JobService {
@@ -60,6 +61,28 @@ public class JobService {
     @Transactional
     public JobResponse createJob(Long userId, byte[] image, String styleId) {
         rateLimitService.check(userId);
+        String mimeType = validateImage(image, styleId);
+
+        User user = creditService.lockForUpdate(userId);
+        int cost = properties.jobs().creditsPerJob();
+        creditService.ensureSufficientCredits(user, cost);
+
+        Job job = new Job(user, styleId, cost);
+        job.setInputMimeType(mimeType);
+        job.setInputSizeBytes((long) image.length);
+        job = jobRepository.save(job);
+
+        creditService.recordConsumption(user, job, cost);
+        tempImageStore.putSource(job.getId(), image, mimeType);
+        events.publishEvent(new JobQueuedEvent(job.getId()));
+        return jobMapper.toResponse(job);
+    }
+
+    /**
+     * Validează stilul și imaginea, apoi întoarce tipul MIME detectat.
+     * Folosit atât de fluxul autentificat, cât și de cel de trial.
+     */
+    String validateImage(byte[] image, String styleId) {
         if (styleId == null || !properties.jobs().styles().containsKey(styleId)) {
             throw ApiException.badRequest("Unknown style_id. Supported styles: "
                     + String.join(", ", properties.jobs().styles().keySet()));
@@ -75,20 +98,33 @@ public class JobService {
         if (mimeType == null) {
             throw ApiException.badRequest("Unsupported image format. Use PNG, JPEG or WEBP");
         }
+        return mimeType;
+    }
 
-        User user = creditService.lockForUpdate(userId);
-        int cost = properties.jobs().creditsPerJob();
-        creditService.ensureSufficientCredits(user, cost);
-
-        Job job = new Job(user, styleId, cost);
-        job.setInputMimeType(mimeType);
-        job.setInputSizeBytes((long) image.length);
-        job = jobRepository.save(job);
-
-        creditService.recordConsumption(user, job, cost);
-        tempImageStore.putSource(job.getId(), image, mimeType);
-        events.publishEvent(new JobQueuedEvent(job.getId()));
+    /**
+     * Încarcă un job de trial după identificatorul public (acces fără cont).
+     */
+    @Transactional(readOnly = true)
+    public JobResponse getGuestJob(UUID publicId) {
+        Job job = requireGuestJob(publicId);
         return jobMapper.toResponse(job);
+    }
+
+    /**
+     * Descarcă imaginea unui job de trial folosind identificatorul public ca token.
+     */
+    @Transactional(readOnly = true)
+    public DownloadPayload downloadGuest(UUID publicId) {
+        Job job = requireGuestJob(publicId);
+        return downloadPayload(job);
+    }
+
+    /**
+     * Găsește jobul de trial după identificatorul public și verifică starea finalizării.
+     */
+    private Job requireGuestJob(UUID publicId) {
+        return jobRepository.findByPublicId(publicId)
+                .orElseThrow(() -> ApiException.notFound("Job " + publicId + " not found"));
     }
 
     /**
@@ -211,12 +247,18 @@ public class JobService {
      */
     @Transactional(readOnly = true)
     public DownloadPayload download(Long jobId, AuthenticatedUser currentUser) {
-        Job job = requireVisibleJob(jobId, currentUser);
+        return downloadPayload(requireVisibleJob(jobId, currentUser));
+    }
+
+    /**
+     * Construiește răspunsul de descărcare pentru un job finalizat aflat încă în cache.
+     */
+    private DownloadPayload downloadPayload(Job job) {
         if (job.getStatus() != JobStatus.COMPLETED) {
             throw ApiException.conflict("JOB_NOT_COMPLETED",
                     "The image is only available for COMPLETED jobs");
         }
-        TempImageStore.StoredImage image = tempImageStore.getResult(jobId)
+        TempImageStore.StoredImage image = tempImageStore.getResult(job.getId())
                 .orElseThrow(() -> new ApiException(HttpStatus.GONE, "IMAGE_EXPIRED",
                         "The generated image is no longer cached (TTL expired). Generate it again if needed."));
         String extension = image.mimeType().contains("jpeg") || image.mimeType().contains("jpg")

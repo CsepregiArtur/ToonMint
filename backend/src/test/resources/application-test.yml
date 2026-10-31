@@ -19,6 +19,10 @@ app:
   jobs:
     threads: 1
     max-output-dimension: 512
+    # Testele nu trebuie să atingă fișierele reale din frontend/public/demo.
+    style-preview-output-dir: ${java.io.tmpdir}/toonmint-test-style-previews
+    style-preview-source: ${java.io.tmpdir}/toonmint-test-before.png
+    style-preview-delay-millis: 0
   rate-limit:
     enabled: true
     backend: memory
@@ -38,6 +42,14 @@ app:
   admin:
     email: ""
     password: ""
+  demo:
+    enabled: true
+    user-email: demo@toonmint.test
+    user-password: demo12345
+    user-credits: 10
+    admin-email: operator@toonmint.test
+    admin-password: operator12345
+    admin-credits: 10
 
 logging:
   level:

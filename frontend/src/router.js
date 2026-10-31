@@ -1,14 +1,15 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import LoginView from './views/LoginView.vue'
+import LandingView from './views/LandingView.vue'
 import StudioView from './views/StudioView.vue'
 import CreditsView from './views/CreditsView.vue'
 import AdminView from './views/AdminView.vue'
 import { useAuthStore } from './stores/auth'
 
-// Rutele aplicației. Fiecare rută protejată verifică existența tokenului,
-// iar ruta de admin verifică suplimentar rolul utilizatorului.
+// Rutele aplicației. Prima pagină este publică (demonstrație + generare gratuită),
+// restul cer autentificare, iar /admin cere rol de operator.
 const routes = [
-  { path: '/', redirect: '/studio' },
+  { path: '/', name: 'landing', component: LandingView, meta: { public: true } },
   { path: '/login', name: 'login', component: LoginView, meta: { public: true } },
   { path: '/studio', name: 'studio', component: StudioView },
   { path: '/credits', name: 'credits', component: CreditsView },

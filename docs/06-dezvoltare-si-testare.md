@@ -105,16 +105,30 @@ dropdb toonmint && createdb -O toonmint toonmint # reset complet al bazei
 
 ## 4. Profiluri
 
+### Variabile de mediu
+
+Spring Boot încarcă automat `.env` din rădăcina repo-ului sau din `backend/`
+(`spring.config.import: optional:file:./.env[.properties]`). Nu este nevoie de
+`export` în shell; fișierul este în `.gitignore`.
+
+```bash
+cd /Users/.../ToonMint
+cp .env.example .env
+# editează .env: GEMINI_API_KEY, MAIL_USERNAME, REVENUECAT_...
+```
+
 ### `dev` (implicit)
 
 | Aspect | Valoare |
 |---|---|
 | Bază de date | H2 pe disc: `backend/data/toonmint.mv.db` |
 | Migrații | Flyway rulează aceleași scripturi ca pe PostgreSQL |
-| AI | `StubImageProvider` (posterize local, fără cost) |
+| AI | `auto`: Gemini dacă există `GEMINI_API_KEY`, altfel `StubImageProvider` |
 | Rate limit | în memorie |
 | Cache imagini | Caffeine, TTL 10 min |
 | Email | simulat (`simulated: true`) |
+| Conturi demo | active: `demo@toonmint.local` / `demo12345` și `operator@toonmint.local` / `operator12345` |
+| Generare gratuită | 1 imagine per email, fără cont |
 
 ### `prod`
 
@@ -134,7 +148,7 @@ limitare de 1000 cereri/minut, `app.jobs.threads=1`.
 
 ## 5. Teste
 
-Suita are 24 de teste de integrare (`@SpringBootTest` + `MockMvc`) care acoperă
+Suita are 36 de teste de integrare (`@SpringBootTest` + `MockMvc`) care acoperă
 fluxurile complete:
 
 | Clasă | Acoperă |
@@ -146,6 +160,9 @@ fluxurile complete:
 | `JobFailureRefundTest` | rambursare automată la eșec + lipsa dublei rambursări |
 | `AdminApiTest` | email simulat, acces interzis utilizatorilor, statistici, liste de admin |
 | `RateLimitTest` | a doua cerere în aceeași fereastră → `429` + `Retry-After` |
+| `GuestTrialApiTest` | generare anonimă, blocarea celei de-a doua cereri, eligibilitate, email invalid, job inexistent |
+| `DemoLoginApiTest` | disponibilitate, token utilizabil, rol `ADMIN` |
+| `StyleCatalogTest` | cel puțin 20 de stiluri, etichete unice, prompturi ne-goale, `previewUrl` pentru fiecare, endpoint public |
 
 Rulare țintită:
 

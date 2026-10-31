@@ -27,9 +27,15 @@ public class Job {
     @Column(name = "public_id", nullable = false, unique = true, updatable = false)
     private UUID publicId;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "user_id", nullable = false)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id")
     private User user;
+
+    @Column(name = "guest_email")
+    private String guestEmail;
+
+    @Column(nullable = false)
+    private boolean trial;
 
     @Column(name = "style_id", nullable = false)
     private String styleId;
@@ -75,6 +81,16 @@ public class Job {
         this.user = user;
         this.styleId = styleId;
         this.creditsConsumed = creditsConsumed;
+    }
+
+    /**
+     * Creează un job de trial: fără cont, fără consum de credite, legat de email.
+     */
+    public static Job forGuest(String email, String styleId) {
+        Job job = new Job(null, styleId, 0);
+        job.guestEmail = email;
+        job.trial = true;
+        return job;
     }
 
     /**
@@ -151,10 +167,24 @@ public class Job {
     }
 
     /**
-     * Returnează proprietarul jobului.
+     * Returnează proprietarul jobului; null pentru joburile de trial.
      */
     public User getUser() {
         return user;
+    }
+
+    /**
+     * Email-ul vizitatorului, completat doar pentru joburile de trial.
+     */
+    public String getGuestEmail() {
+        return guestEmail;
+    }
+
+    /**
+     * Indică dacă jobul provine din generarea gratuită (fără cont).
+     */
+    public boolean isTrial() {
+        return trial;
     }
 
     /**

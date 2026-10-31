@@ -1,8 +1,18 @@
 # ToonMint
 
 Aplicație photo-to-cartoon: utilizatorul încarcă o fotografie, alege un stil, iar serverul
-generează o versiune cartoon/anime. Imaginile **nu sunt stocate permanent** — sunt ținute
-doar într-un cache temporar cu TTL, iar în baza de date rămân doar metadatele.
+generează o versiune cartoon/anime.
+
+- **Transformare AI a fotografiilor** în stil cartoon/anime (Gemini 3.1 Flash Image).
+- **Peste 20 de stiluri artistice** distincte (26 în configurația livrată), fiecare cu
+  imagine de exemplu în galeria de pe prima pagină.
+
+Imaginile **nu sunt stocate permanent** — sunt ținute doar într-un cache temporar cu TTL,
+iar în baza de date rămân doar metadatele.
+
+Prima pagină este publică: o demonstrație „înainte/după” cu slider și **o generare
+gratuită per adresă de email**, fără cont. După aceea este nevoie de abonament sau de
+credite suplimentare.
 
 | Strat | Tehnologie |
 |---|---|
@@ -77,10 +87,13 @@ sudo apt install redis-server                        # Debian/Ubuntu
 ### Pornire
 
 ```bash
-cp .env.example .env          # completează secretele
+cp .env.example .env          # completează secretele (este citit automat)
 cd backend
 mvn spring-boot:run -Dspring-boot.run.profiles=prod
 ```
+
+Fișierul `.env` din rădăcina repo-ului (sau din `backend/`) este încărcat automat de
+Spring Boot, deci nu trebuie să exporți variabilele manual.
 
 Profilul `prod` cere obligatoriu `JWT_SECRET` și folosește PostgreSQL, Gemini și Gmail
 SMTP. **Redis este opțional** pentru o singură instanță — fără el, setează în `.env`:
@@ -97,9 +110,76 @@ cereri și cache de imagini partajate). Detalii: [docs/06](docs/06-dezvoltare-si
 ## Rulare teste
 
 ```bash
-cd backend && mvn test        # 24 de teste de integrare pe H2
+cd backend && mvn test        # 36 de teste de integrare pe H2
 cd frontend && npm run build  # verifică build-ul Vue
 ```
+
+## Fluxul gratuit (fără cont)
+
+```bash
+# 1. verifică dacă adresa mai are dreptul la imaginea gratuită
+curl "http://localhost:8080/api/public/trial/eligibility?email=tu@exemplu.com"
+
+# 2. trimite fotografia (fără token)
+curl -X POST http://localhost:8080/api/public/trial \
+  -F "email=tu@exemplu.com" -F "style_id=anime_v1" -F "image=@photo.png"
+
+# 3. urmărește statusul și descarcă rezultatul (publicId = token)
+curl http://localhost:8080/api/public/jobs/<publicId>
+curl -OJ http://localhost:8080/api/public/jobs/<publicId>/download
+```
+
+A doua cerere cu aceeași adresă primește `402 TRIAL_ALREADY_USED`.
+
+## Generare cu Gemini
+
+Providerul de imagini se alege automat:
+
+| `AI_PROVIDER` | Comportament |
+|---|---|
+| `auto` (implicit) | Gemini dacă `GEMINI_API_KEY` există, altfel `stub` (offline) |
+| `gemini` | cere obligatoriu cheia; fără ea aplicația nu pornește |
+| `stub` | offline, fără cost (doar pentru UI) |
+
+```bash
+echo 'GEMINI_API_KEY=cheia-ta' >> .env     # .env nu se comite
+cd backend && mvn spring-boot:run
+# log: "Using Gemini image provider with model gemini-3.1-flash-image"
+```
+
+## Exemplele de stil (generate cu Gemini)
+
+Galeria de pe prima pagină folosește imagini reale generate de model, câte una pentru
+fiecare stil, pornind de la `frontend/public/demo/before.jpg`:
+
+```bash
+# AI_PROVIDER=gemini + GEMINI_API_KEY în .env
+curl -H "Authorization: Bearer $ADMIN_TOKEN" localhost:8080/api/admin/style-previews
+curl -X POST -H "Authorization: Bearer $ADMIN_TOKEN" \
+  "localhost:8080/api/admin/style-previews/regenerate?missingOnly=true"
+```
+
+Endpointul refuză să ruleze cu providerul `stub` (`409 PREVIEW_REQUIRES_AI_PROVIDER`),
+ca să nu apară imagini care nu provin din model. Cost: o generare per stil
+(~26 imagini), rulat o singură dată, cu o pauză de 2.5s între cereri
+(`STYLE_PREVIEW_DELAY_MS`).
+
+> Cheia pe **Free Tier** nu are cotă pentru generarea de imagini: răspunsul este
+> `429` cu „Generate content requests per day limit exceeded on Free Tier”. Este nevoie
+> de facturare activă (tier plătit) în Google AI Studio; până atunci galeria afișează
+> plăci cu numele stilurilor, iar hero-ul doar fotografia.
+
+## Login demo (doar în dezvoltare)
+
+Profilul `dev` creează două conturi și afișează butoanele „Cont demo” / „Operator demo”
+pe pagina de autentificare:
+
+| Cont | Email | Parolă | Acces |
+|---|---|---|---|
+| Demo | `demo@toonmint.local` | `demo12345` | 25 credite, studio + credite |
+| Operator | `operator@toonmint.local` | `operator12345` | rol `ADMIN`, consola `/admin` |
+
+Profilul `prod` forțează `app.demo.enabled=false`, deci endpoint-ul nu există.
 
 ## Configurare externă
 
@@ -120,6 +200,7 @@ cd frontend && npm run build  # verifică build-ul Vue
 - [05 – Credite și rate limiting](docs/05-credite-si-rate-limiting.md)
 - [06 – Dezvoltare și testare](docs/06-dezvoltare-si-testare.md)
 - [07 – Securitate](docs/07-securitate.md)
+- [08 – Frontend și pagina de start](docs/08-frontend-si-landing.md)
 
 ## Structura proiectului
 
@@ -137,18 +218,21 @@ backend/
     web/           controllere REST + DTO-uri + tratarea erorilor
   src/main/resources/db/migration/V1__init.sql
 frontend/
-  src/components/  JobUploader, JobList, CreditStore, AdminPanel
-  src/stores/      Pinia: auth, jobs, credits, admin
-  src/views/       Login, Studio, Credits, Admin
+  public/demo/     before.jpg (fotografie CC0) + styles/*.jpg (exemple generate cu Gemini)
+  src/components/  BeforeAfterSlider, TrialGenerator, JobUploader, JobList, CreditStore, AdminPanel
+  src/stores/      Pinia: auth, trial, jobs, credits, admin
+  src/views/       Landing, Login, Studio, Credits, Admin
 docs/              documentație în română
 ```
 
 ## Fluxuri principale
 
-1. **Generare**: upload → validare → rate limit → debitare credit (lock pessimistic) →
+1. **Trial**: email + fotografie → revendicare unică a adresei (`guest_trials`) → job fără
+   credite → aceeași procesare ca la utilizatorii autentificați (imagine doar în cache).
+2. **Generare**: upload → validare → rate limit → debitare credit (lock pessimistic) →
    job `PENDING` → worker după commit → Gemini (retry exponențial + jitter) → imagine în
    cache 10 min → `COMPLETED` sau `FAILED` + rambursare automată.
-2. **Plată**: frontend cere link RevenueCat → checkout găzduit de RevenueCat → webhook
+3. **Plată**: frontend cere link RevenueCat → checkout găzduit de RevenueCat → webhook
    semnat → activare abonament / acordare credite, cu idempotență pe `event_id`.
-3. **Email**: operatorul selectează utilizatori → backend trimite prin Gmail SMTP și
+4. **Email**: operatorul selectează utilizatori → backend trimite prin Gmail SMTP și
    înregistrează rezultatul în `email_messages`.

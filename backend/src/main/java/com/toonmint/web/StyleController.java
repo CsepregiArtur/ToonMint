@@ -11,8 +11,8 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 
 /**
- * Publica lista de stiluri disponibile pentru selectorul din frontend.
- * Expune doar id-ul și eticheta; prompturile rămân pe server.
+ * Publică lista de stiluri disponibile pentru selectorul din frontend: id, etichetă
+ * și imaginea de exemplu. Prompturile rămân pe server.
  */
 @RestController
 @RequestMapping("/api/styles")
@@ -34,8 +34,23 @@ public class StyleController {
     @GetMapping
     @Operation(summary = "List available cartoon styles")
     public List<StyleResponse> styles() {
+        String base = previewBase();
         return properties.jobs().styles().entrySet().stream()
-                .map(entry -> new StyleResponse(entry.getKey(), entry.getValue().label()))
+                .map(entry -> new StyleResponse(
+                        entry.getKey(),
+                        entry.getValue().label(),
+                        base == null ? null : base + "/" + entry.getKey() + ".jpg"))
                 .toList();
+    }
+
+    /**
+     * Prefixul public al imaginilor de exemplu; null dacă este dezactivat.
+     */
+    private String previewBase() {
+        String base = properties.jobs().stylePreviewBaseUrl();
+        if (base == null || base.isBlank()) {
+            return null;
+        }
+        return base.endsWith("/") ? base.substring(0, base.length() - 1) : base;
     }
 }

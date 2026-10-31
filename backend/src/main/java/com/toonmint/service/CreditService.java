@@ -65,6 +65,9 @@ public class CreditService {
      */
     @Transactional
     public boolean refund(Job job, String reason) {
+        if (job.getUser() == null || job.getCreditsConsumed() <= 0) {
+            return false;
+        }
         if (transactions.existsByReferenceJobIdAndType(job.getId(), CreditTransactionType.REFUND)) {
             return false;
         }

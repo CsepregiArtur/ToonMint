@@ -22,6 +22,12 @@ implementată fiecare în cod.
 | 13 | Email | Google/Gmail SMTP prin Spring Mail | ✅ |
 | 14 | Autentificare JWT | `JwtService`, `JwtAuthenticationFilter`, Spring Security | ✅ |
 | 15 | Documentație API | Swagger UI (`/swagger-ui.html`) + `docs/02-api.md` | ✅ |
+| 16 | O generare gratuită fără cont (doar email) | `GuestTrialService` + `guest_trials` + `/api/public/**` | ✅ |
+| 17 | Blocare după trial: abonament sau credite | `402 TRIAL_ALREADY_USED` + catalog RevenueCat | ✅ |
+| 18 | Prima pagină: demonstrație cu slider | `LandingView` + `BeforeAfterSlider` | ✅ |
+| 19 | Login demo pentru dezvoltare | `DemoAuthController` + `DemoDataSeeder` (doar profilul `dev`) | ✅ |
+| 20 | Peste 20 de stiluri artistice distincte | 26 stiluri în `app.jobs.styles`, expuse de `/api/styles` | ✅ |
+| 21 | Transformare AI cartoon/anime | `GeminiImageProvider` (fallback `stub` offline) | ✅ |
 
 ## 2. Model de business
 
@@ -55,6 +61,10 @@ Detaliile de marjă și calculul profitabilității sunt în
 | Trimitere email | `POST /api/admin/send-email` |
 | Căutare după cuvânt cheie | `GET /api/jobs/search?keyword=` |
 | Webhook plăți | `POST /api/webhooks/revenuecat` |
+| Generare gratuită (fără cont) | `POST /api/public/trial` |
+| Status / descărcare trial | `GET /api/public/jobs/{publicId}` , `GET /api/public/jobs/{publicId}/download` |
+| Verificare drept de trial | `GET /api/public/trial/eligibility?email=` |
+| Login demo (dev) | `POST /api/auth/demo-login` |
 
 ## 4. Operații în frontend
 
@@ -92,3 +102,8 @@ Google Play), iar backendul primește aceleași webhook-uri — vezi
   raportat explicit prin `410 SOURCE_IMAGE_EXPIRED`.
 - Providerul alternativ OpenAI GPT Image nu este implementat, dar interfața
   `ImageGenerationProvider` permite adăugarea lui fără modificări în restul aplicației.
+- Generarea gratuită este limitată la **o imagine per adresă de email** (nu per dispozitiv).
+  Limitarea suplimentară per IP există, dar nu împiedică folosirea mai multor adrese;
+  pentru control strict este nevoie de verificare de email sau de captcha.
+- Conturile demo și endpoint-ul `/api/auth/demo-login` există **doar** în profilul `dev`;
+  profilul `prod` forțează `app.demo.enabled=false`, deci ruta nu este înregistrată.
