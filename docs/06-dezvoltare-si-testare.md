@@ -99,6 +99,24 @@ nu se pot genera proxy-uri Hibernate la runtime, deci asocierile `LAZY` (de tip
 allowed`. Enhancement-ul mută lazy loading la build-time; pe JVM nimic nu se
 schimbă, pentru că pluginul e doar în profil.
 
+### 2.3 Stadiul build-ului nativ
+
+Workflow-ul rulează pe `main` și manual (`workflow_dispatch`), **nu pe PR**: încă
+nu trece, iar un check roșu pe fiecare PR ar bloca lucrul degeaba.
+
+Ce merge nativ, verificat în CI: pornirea (0,75–1,4 s), Spring/Tomcat, Flyway + H2,
+JPA/Hibernate, JWT, seeder-ul de conturi demo, `/api/styles` și `POST /api/jobs`.
+
+Ce **nu** merge: procesarea imaginii (`ImageIO`, Thumbnailator). `libawt` rezolvă
+la `JNI_OnLoad` clase și metode care nu sunt vizibile static — sunt deja acoperite
+în `META-INF/native-image/com.toonmint/awt/jni-config.json` (`GraphicsEnvironment`,
+`Toolkit`, `System.load`, `Disposer.addRecord`) — dar `java.awt.image.ColorModel`
+are nevoie de legarea metodei native `initIDs`, după care e probabil să urmeze
+color spaces, font manager și SPI-urile ImageIO. Tracing agent-ul GraalVM nu
+ajută: rulează în cod Java și nu vede apelurile JNI din interiorul `libawt`.
+
+Până se rezolvă, varianta pentru producție rămâne JVM-ul.
+
 ## 3. Servicii externe fără Docker
 
 Proiectul rulează direct pe sistem, fără containere. Profilul `dev` nu are nevoie de
