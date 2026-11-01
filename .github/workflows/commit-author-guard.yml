@@ -1,0 +1,38 @@
+name: Commit author guard
+
+on:
+  pull_request:
+  push:
+
+permissions:
+  contents: read
+
+jobs:
+  reject-copilot-identity:
+    name: Reject Copilot commit identity
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Check commit authors and committers
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BEFORE_SHA: ${{ github.event.before }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set -eu
+          if [ "$EVENT_NAME" = "pull_request" ]; then
+            range="$BASE_SHA...HEAD"
+          elif [ -n "$BEFORE_SHA" ] && [ "$BEFORE_SHA" != "0000000000000000000000000000000000000000" ]; then
+            range="$BEFORE_SHA..HEAD"
+          else
+            range=HEAD
+          fi
+
+          identities=$(git log "$range" --format='%an <%ae>%n%cn <%ce>')
+          if printf '%s\n' "$identities" | grep -Eiq 'copilot'; then
+            echo "Commit history contains a Copilot author or committer identity. Use the repository owner's Git identity instead."
+            printf '%s\n' "$identities" | grep -Ei 'copilot' || true
+            exit 1
+          fi
