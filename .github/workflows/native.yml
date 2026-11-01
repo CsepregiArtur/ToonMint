@@ -50,7 +50,7 @@ jobs:
 
           dump() {
             echo "::group::native.log"
-            tail -80 native.log
+            tail -200 native.log
             echo "::endgroup::"
           }
 
@@ -78,14 +78,37 @@ jobs:
           curl -fsS http://localhost:8080/actuator/health
           echo "startup: $(( $(date +%s%3N) - START )) ms"
 
-          TOKEN=$(curl -fsS -X POST http://localhost:8080/api/auth/demo-login \
-            -H 'Content-Type: application/json' -d '{}' | jq -r .token)
+          # /actuator/health răspunde înainte ca ApplicationRunner-ele să termine,
+          # iar conturile demo sunt create de DemoDataSeeder, deci se reîncearcă.
+          TOKEN=""
+          for _ in $(seq 1 30); do
+            TOKEN=$(curl -fsS -X POST http://localhost:8080/api/auth/demo-login \
+              -H 'Content-Type: application/json' -d '{}' 2>/dev/null | jq -r '.token // empty')
+            [ -n "$TOKEN" ] && break
+            sleep 1
+          done
+          if [ -z "$TOKEN" ]; then
+            echo "::error::demo-login never returned a token"
+            dump
+            exit 1
+          fi
+
           STYLE_ID=$(curl -fsS http://localhost:8080/api/styles | jq -r '.[0].id')
+          if [ -z "$STYLE_ID" ] || [ "$STYLE_ID" = "null" ]; then
+            echo "::error::style catalog is empty"
+            dump
+            exit 1
+          fi
 
           convert -size 640x480 gradient:orange-blue /tmp/in.png
           JOB_ID=$(curl -fsS -X POST http://localhost:8080/api/jobs \
             -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
-            -d "{\"styleId\":\"$STYLE_ID\",\"imageBase64\":\"$(base64 -w0 /tmp/in.png)\"}" | jq -r .id)
+            -d "{\"styleId\":\"$STYLE_ID\",\"imageBase64\":\"$(base64 -w0 /tmp/in.png)\"}" | jq -r '.id // empty')
+          if [ -z "$JOB_ID" ]; then
+            echo "::error::job creation failed"
+            dump
+            exit 1
+          fi
 
           STATUS=PENDING
           for _ in $(seq 1 60); do
