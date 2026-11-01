@@ -10,5 +10,13 @@
     "allDeclaredConstructors": true,
     "allDeclaredMethods": true,
     "allDeclaredFields": true
+  },
+  {
+    "name": "java.lang.System",
+    "allDeclaredMethods": true
+  },
+  {
+    "name": "java.lang.Runtime",
+    "allDeclaredMethods": true
   }
 ]
