@@ -42,16 +42,39 @@ jobs:
       - name: Smoke test
         working-directory: backend
         run: |
-          set -euo pipefail
+          set -uo pipefail
           START=$(date +%s%3N)
           ./target/toonmint-backend > native.log 2>&1 &
           PID=$!
           trap 'kill $PID 2>/dev/null || true' EXIT
 
-          for _ in $(seq 1 150); do
-            curl -fsS http://localhost:8080/actuator/health > /dev/null 2>&1 && break
+          dump() {
+            echo "::group::native.log"
+            tail -80 native.log
+            echo "::endgroup::"
+          }
+
+          UP=0
+          for _ in $(seq 1 300); do
+            if ! kill -0 $PID 2>/dev/null; then
+              echo "::error::Native binary exited before becoming healthy"
+              wait $PID; echo "exit code: $?"
+              dump
+              exit 1
+            fi
+            if curl -fsS http://localhost:8080/actuator/health > /dev/null 2>&1; then
+              UP=1
+              break
+            fi
             sleep 0.2
           done
+
+          if [ $UP -ne 1 ]; then
+            echo "::error::Application did not become healthy within 60s"
+            dump
+            exit 1
+          fi
+
           curl -fsS http://localhost:8080/actuator/health
           echo "startup: $(( $(date +%s%3N) - START )) ms"
 
@@ -69,10 +92,14 @@ jobs:
             STATUS=$(curl -fsS -H "Authorization: Bearer $TOKEN" \
               http://localhost:8080/api/jobs/$JOB_ID | jq -r .status)
             [ "$STATUS" = "COMPLETED" ] && break
-            [ "$STATUS" = "FAILED" ] && { cat native.log; exit 1; }
+            [ "$STATUS" = "FAILED" ] && { echo "::error::Job failed"; dump; exit 1; }
             sleep 1
           done
-          [ "$STATUS" = "COMPLETED" ] || { cat native.log; exit 1; }
+          if [ "$STATUS" != "COMPLETED" ]; then
+            echo "::error::Job ended in state $STATUS"
+            dump
+            exit 1
+          fi
 
           curl -fsS -o /tmp/out.png -H "Authorization: Bearer $TOKEN" \
             http://localhost:8080/api/jobs/$JOB_ID/download
@@ -84,3 +111,11 @@ jobs:
           name: toonmint-native
           path: backend/target/toonmint-backend
           if-no-files-found: error
+
+      - name: Upload smoke log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-smoke-log
+          path: backend/native.log
+          if-no-files-found: ignore
