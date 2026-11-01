@@ -18,5 +18,17 @@
   {
     "name": "java.lang.Runtime",
     "allDeclaredMethods": true
+  },
+  {
+    "name": "sun.java2d.Disposer",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "sun.java2d.DisposerRecord",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
   }
 ]

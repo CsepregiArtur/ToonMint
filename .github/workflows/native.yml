@@ -21,7 +21,7 @@ concurrency:
 jobs:
   native:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
 
@@ -32,48 +32,6 @@ jobs:
           distribution: 'graalvm'
           github-token: ${{ secrets.GITHUB_TOKEN }}
           cache: maven
-
-      # Jar obisnuit (fara AOT), folosit doar ca sa rulam aplicatia sub tracing agent.
-      - name: Build JVM jar
-        working-directory: backend
-        run: mvn -B -DskipTests package
-
-      # libawt rezolva la JNI_OnLoad o lista de clase si metode care nu sunt
-      # vizibile static (FindClass/GetStaticMethodID/GetMethodID). Agentul le
-      # descopera ruland exact fluxul pe care il testam, in loc sa le adunam manual.
-      - name: Collect native-image metadata
-        working-directory: backend
-        run: |
-          set -uo pipefail
-          set +e
-
-          rm -rf data target/native-agent
-          mkdir -p target/native-agent
-          java -agentlib:native-image-agent=config-output-dir=target/native-agent \
-            -jar target/toonmint-backend-1.0.0.jar > agent.log 2>&1 &
-          PID=$!
-
-          ./scripts/native-smoke.sh
-          RC=$?
-
-          kill $PID 2>/dev/null
-          wait $PID 2>/dev/null
-
-          if [ $RC -ne 0 ]; then
-            echo "::error::JVM smoke flow failed while collecting metadata"
-            echo "::group::agent.log"
-            tail -80 agent.log
-            echo "::endgroup::"
-            exit 1
-          fi
-
-          # Continutul directorului e generat la fiecare rulare; nu se comite.
-          mkdir -p src/main/resources/META-INF/native-image/com.toonmint/agent
-          for f in target/native-agent/*.json; do
-            [ -e "$f" ] || continue
-            cp "$f" src/main/resources/META-INF/native-image/com.toonmint/agent/
-            echo "collected $(basename "$f") ($(wc -c < "$f") bytes)"
-          done
 
       - name: Compile native image
         working-directory: backend
@@ -111,13 +69,10 @@ jobs:
           path: backend/target/toonmint-backend
           if-no-files-found: error
 
-      - name: Upload logs
+      - name: Upload smoke log
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: native-logs
-          path: |
-            backend/native.log
-            backend/agent.log
-            backend/src/main/resources/META-INF/native-image/com.toonmint/agent/*.json
+          name: native-smoke-log
+          path: backend/native.log
           if-no-files-found: ignore
