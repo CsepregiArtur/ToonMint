@@ -63,6 +63,67 @@ build-ul web, unde `/api` trebuie să rămână relativ. Cumpărările cer în p
 de git), deci după clonare se rulează întâi `npm run build` și apoi `npx cap sync`.
 Detalii: [13 – Aplicații mobile](13-mobil-ios-android.md).
 
+### 2.2 Build nativ (GraalVM)
+
+Profilul `native` din `backend/pom.xml` produce un executabil self-contained în loc
+de `java -jar`:
+
+```bash
+cd backend
+mvn -Pnative native:compile -DskipTests    # → target/toonmint-backend
+```
+
+Build-ul are nevoie de GraalVM (NU de un JDK obișnuit) și de ~8 GB RAM, 10–20 de
+minute CPU. Nu se rulează pe mașina de dezvoltare sau pe serverul de producție:
+`native-image` **nu cross-compilează**, deci un binar pentru Linux se poate face
+doar pe Linux. De aceea build-ul rulează în CI
+(`.github/workflows/native.yml`, `ubuntu-latest`), iar artefactul `toonmint-native`
+se descarcă de acolo.
+
+Workflow-ul verifică binarul înainte de a-l publica: îl pornește pe profilul `dev`
+(H2 local + `StubImageProvider`, fără servicii externe), așteaptă
+`/actuator/health`, apoi parcurge un job complet (login demo → `POST /api/jobs` →
+`COMPLETED` → `download`). Pasul din urmă este important: `ImageIO` și Thumbnailator
+(`ImageOptimizer`, `StylePreviewService`) sunt cea mai fragilă parte în native-image,
+iar un simplu `health=UP` nu atinge deloc AWT.
+
+JJWT își încarcă implementările după nume de clasă (`KeysBridge`, `DefaultJwtBuilder`,
+…), deci are nevoie de hint-uri explicite: `src/main/resources/META-INF/native-image/com.toonmint/jjwt/reflect-config.json`.
+Fără ele, binarul pornește dar moare cu `UnknownClassException` la primul `Jwts`/`Keys`.
+Fișierul stă într-un director separat intenționat — Spring AOT rescrie
+`META-INF/native-image/com.toonmint/toonmint-backend/` la fiecare build.
+
+Profilul `native` activează și `hibernate-enhance-maven-plugin`: în native-image
+nu se pot genera proxy-uri Hibernate la runtime, deci asocierile `LAZY` (de tip
+`Job.user`) ar arunca `Generation of HibernateProxy instances at runtime is not
+allowed`. Enhancement-ul mută lazy loading la build-time; pe JVM nimic nu se
+schimbă, pentru că pluginul e doar în profil.
+
+### 2.3 Build nativ: rezultat
+
+Binarul pornește în aproximativ o secundă și parcurge tot fluxul (login demo →
+job → `COMPLETED` → download), inclusiv downscale-ul imaginii, în ~3 s. Workflow-ul
+rulează pe `main`, pe PR și manual.
+
+Trei lucruri au trebuit rezolvate, în ordinea în care au apărut la runtime:
+
+1. **JJWT** încarcă implementările după nume de clasă (`KeysBridge`,
+   `DefaultJwtBuilder`, …) → `META-INF/native-image/com.toonmint/jjwt/reflect-config.json`.
+   Fără el: `UnknownClassException` la pornire.
+2. **Hibernate** nu poate genera proxy-uri la runtime → `hibernate-enhance-maven-plugin`
+   în profilul `native`. Fără el: `Generation of HibernateProxy instances at runtime
+   is not allowed` la primul `GET /api/jobs/{id}`.
+3. **AWT/Java2D** → `META-INF/native-image/com.toonmint/awt/jni-config.json`. `libawt`
+   rezolvă la `JNI_OnLoad` clase și metode care nu sunt vizibile static
+   (`GraphicsEnvironment`, `System.load`, `Disposer.addRecord`), iar clasele din
+   `java.awt.image` și `sun.java2d` au metode native `initIDs` care se leagă doar dacă
+   sunt înregistrate. Lista celor 52 de clase a fost generată scanând `java.desktop`
+   pentru metode native, păstrând doar clasele comune (fără `lwawt`, `metal`,
+   `opengl`, `CGL`, care nu există pe Linux).
+
+Tracing agent-ul GraalVM **nu** ajută aici: rulează în cod Java și nu vede apelurile
+JNI făcute din interiorul `libawt`, deci nu produce secțiunea `jni`.
+
 ## 3. Servicii externe fără Docker
 
 Proiectul rulează direct pe sistem, fără containere. Profilul `dev` nu are nevoie de

@@ -1,0 +1,78 @@
+name: native
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'backend/**'
+      - '.github/workflows/native.yml'
+  pull_request:
+    paths:
+      - 'backend/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: native-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  native:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: GraalVM JDK 25
+        uses: graalvm/setup-graalvm@v1
+        with:
+          java-version: '25'
+          distribution: 'graalvm'
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          cache: maven
+
+      - name: Compile native image
+        working-directory: backend
+        run: mvn -B -Pnative native:compile -DskipTests
+
+      - name: Smoke test
+        working-directory: backend
+        run: |
+          set -uo pipefail
+          set +e
+
+          rm -rf data
+          START=$(date +%s%3N)
+          ./target/toonmint-backend > native.log 2>&1 &
+          PID=$!
+          trap 'kill $PID 2>/dev/null || true' EXIT
+
+          ./scripts/native-smoke.sh
+          RC=$?
+
+          if [ $RC -ne 0 ]; then
+            echo "::error::native binary failed the smoke flow"
+            echo "::group::native.log"
+            tail -200 native.log
+            echo "::endgroup::"
+            exit 1
+          fi
+
+          echo "startup + flow: $(( $(date +%s%3N) - START )) ms"
+
+      - name: Upload binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: toonmint-native
+          path: backend/target/toonmint-backend
+          if-no-files-found: error
+
+      - name: Upload smoke log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-smoke-log
+          path: backend/native.log
+          if-no-files-found: ignore
