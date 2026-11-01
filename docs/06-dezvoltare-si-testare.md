@@ -99,23 +99,30 @@ nu se pot genera proxy-uri Hibernate la runtime, deci asocierile `LAZY` (de tip
 allowed`. Enhancement-ul mută lazy loading la build-time; pe JVM nimic nu se
 schimbă, pentru că pluginul e doar în profil.
 
-### 2.3 Stadiul build-ului nativ
+### 2.3 Build nativ: rezultat
 
-Workflow-ul rulează pe `main` și manual (`workflow_dispatch`), **nu pe PR**: încă
-nu trece, iar un check roșu pe fiecare PR ar bloca lucrul degeaba.
+Binarul pornește în aproximativ o secundă și parcurge tot fluxul (login demo →
+job → `COMPLETED` → download), inclusiv downscale-ul imaginii, în ~3 s. Workflow-ul
+rulează pe `main`, pe PR și manual.
 
-Ce merge nativ, verificat în CI: pornirea (0,75–1,4 s), Spring/Tomcat, Flyway + H2,
-JPA/Hibernate, JWT, seeder-ul de conturi demo, `/api/styles` și `POST /api/jobs`.
+Trei lucruri au trebuit rezolvate, în ordinea în care au apărut la runtime:
 
-Ce **nu** merge: procesarea imaginii (`ImageIO`, Thumbnailator). `libawt` rezolvă
-la `JNI_OnLoad` clase și metode care nu sunt vizibile static — sunt deja acoperite
-în `META-INF/native-image/com.toonmint/awt/jni-config.json` (`GraphicsEnvironment`,
-`Toolkit`, `System.load`, `Disposer.addRecord`) — dar `java.awt.image.ColorModel`
-are nevoie de legarea metodei native `initIDs`, după care e probabil să urmeze
-color spaces, font manager și SPI-urile ImageIO. Tracing agent-ul GraalVM nu
-ajută: rulează în cod Java și nu vede apelurile JNI din interiorul `libawt`.
+1. **JJWT** încarcă implementările după nume de clasă (`KeysBridge`,
+   `DefaultJwtBuilder`, …) → `META-INF/native-image/com.toonmint/jjwt/reflect-config.json`.
+   Fără el: `UnknownClassException` la pornire.
+2. **Hibernate** nu poate genera proxy-uri la runtime → `hibernate-enhance-maven-plugin`
+   în profilul `native`. Fără el: `Generation of HibernateProxy instances at runtime
+   is not allowed` la primul `GET /api/jobs/{id}`.
+3. **AWT/Java2D** → `META-INF/native-image/com.toonmint/awt/jni-config.json`. `libawt`
+   rezolvă la `JNI_OnLoad` clase și metode care nu sunt vizibile static
+   (`GraphicsEnvironment`, `System.load`, `Disposer.addRecord`), iar clasele din
+   `java.awt.image` și `sun.java2d` au metode native `initIDs` care se leagă doar dacă
+   sunt înregistrate. Lista celor 52 de clase a fost generată scanând `java.desktop`
+   pentru metode native, păstrând doar clasele comune (fără `lwawt`, `metal`,
+   `opengl`, `CGL`, care nu există pe Linux).
 
-Până se rezolvă, varianta pentru producție rămâne JVM-ul.
+Tracing agent-ul GraalVM **nu** ajută aici: rulează în cod Java și nu vede apelurile
+JNI făcute din interiorul `libawt`, deci nu produce secțiunea `jni`.
 
 ## 3. Servicii externe fără Docker
 

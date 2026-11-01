@@ -6,6 +6,9 @@ on:
     paths:
       - 'backend/**'
       - '.github/workflows/native.yml'
+  pull_request:
+    paths:
+      - 'backend/**'
   workflow_dispatch:
 
 permissions:
