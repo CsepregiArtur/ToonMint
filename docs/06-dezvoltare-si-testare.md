@@ -87,6 +87,12 @@ Workflow-ul verifică binarul înainte de a-l publica: îl pornește pe profilul
 (`ImageOptimizer`, `StylePreviewService`) sunt cea mai fragilă parte în native-image,
 iar un simplu `health=UP` nu atinge deloc AWT.
 
+JJWT își încarcă implementările după nume de clasă (`KeysBridge`, `DefaultJwtBuilder`,
+…), deci are nevoie de hint-uri explicite: `src/main/resources/META-INF/native-image/com.toonmint/jjwt/reflect-config.json`.
+Fără ele, binarul pornește dar moare cu `UnknownClassException` la primul `Jwts`/`Keys`.
+Fișierul stă într-un director separat intenționat — Spring AOT rescrie
+`META-INF/native-image/com.toonmint/toonmint-backend/` la fiecare build.
+
 ## 3. Servicii externe fără Docker
 
 Proiectul rulează direct pe sistem, fără containere. Profilul `dev` nu are nevoie de
