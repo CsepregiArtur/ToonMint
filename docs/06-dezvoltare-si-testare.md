@@ -63,6 +63,30 @@ build-ul web, unde `/api` trebuie să rămână relativ. Cumpărările cer în p
 de git), deci după clonare se rulează întâi `npm run build` și apoi `npx cap sync`.
 Detalii: [13 – Aplicații mobile](13-mobil-ios-android.md).
 
+### 2.2 Build nativ (GraalVM)
+
+Profilul `native` din `backend/pom.xml` produce un executabil self-contained în loc
+de `java -jar`:
+
+```bash
+cd backend
+mvn -Pnative native:compile -DskipTests    # → target/toonmint-backend
+```
+
+Build-ul are nevoie de GraalVM (NU de un JDK obișnuit) și de ~8 GB RAM, 10–20 de
+minute CPU. Nu se rulează pe mașina de dezvoltare sau pe serverul de producție:
+`native-image` **nu cross-compilează**, deci un binar pentru Linux se poate face
+doar pe Linux. De aceea build-ul rulează în CI
+(`.github/workflows/native.yml`, `ubuntu-latest`), iar artefactul `toonmint-native`
+se descarcă de acolo.
+
+Workflow-ul verifică binarul înainte de a-l publica: îl pornește pe profilul `dev`
+(H2 local + `StubImageProvider`, fără servicii externe), așteaptă
+`/actuator/health`, apoi parcurge un job complet (login demo → `POST /api/jobs` →
+`COMPLETED` → `download`). Pasul din urmă este important: `ImageIO` și Thumbnailator
+(`ImageOptimizer`, `StylePreviewService`) sunt cea mai fragilă parte în native-image,
+iar un simplu `health=UP` nu atinge deloc AWT.
+
 ## 3. Servicii externe fără Docker
 
 Proiectul rulează direct pe sistem, fără containere. Profilul `dev` nu are nevoie de

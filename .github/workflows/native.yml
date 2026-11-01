@@ -1,0 +1,86 @@
+name: native
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'backend/**'
+      - '.github/workflows/native.yml'
+  pull_request:
+    paths:
+      - 'backend/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: native-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  native:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: GraalVM JDK 25
+        uses: graalvm/setup-graalvm@v1
+        with:
+          java-version: '25'
+          distribution: 'graalvm'
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          cache: maven
+
+      - name: Compile native image
+        working-directory: backend
+        run: mvn -B -Pnative native:compile -DskipTests
+
+      # Startup + ImageIO/Thumbnailator round-trip inside the native binary.
+      # The dev profile uses a local H2 database and StubImageProvider, so no external service is needed.
+      - name: Smoke test
+        working-directory: backend
+        run: |
+          set -euo pipefail
+          START=$(date +%s%3N)
+          ./target/toonmint-backend > native.log 2>&1 &
+          PID=$!
+          trap 'kill $PID 2>/dev/null || true' EXIT
+
+          for _ in $(seq 1 150); do
+            curl -fsS http://localhost:8080/actuator/health > /dev/null 2>&1 && break
+            sleep 0.2
+          done
+          curl -fsS http://localhost:8080/actuator/health
+          echo "startup: $(( $(date +%s%3N) - START )) ms"
+
+          TOKEN=$(curl -fsS -X POST http://localhost:8080/api/auth/demo-login \
+            -H 'Content-Type: application/json' -d '{}' | jq -r .token)
+          STYLE_ID=$(curl -fsS http://localhost:8080/api/styles | jq -r '.[0].id')
+
+          convert -size 640x480 gradient:orange-blue /tmp/in.png
+          JOB_ID=$(curl -fsS -X POST http://localhost:8080/api/jobs \
+            -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+            -d "{\"styleId\":\"$STYLE_ID\",\"imageBase64\":\"$(base64 -w0 /tmp/in.png)\"}" | jq -r .id)
+
+          STATUS=PENDING
+          for _ in $(seq 1 60); do
+            STATUS=$(curl -fsS -H "Authorization: Bearer $TOKEN" \
+              http://localhost:8080/api/jobs/$JOB_ID | jq -r .status)
+            [ "$STATUS" = "COMPLETED" ] && break
+            [ "$STATUS" = "FAILED" ] && { cat native.log; exit 1; }
+            sleep 1
+          done
+          [ "$STATUS" = "COMPLETED" ] || { cat native.log; exit 1; }
+
+          curl -fsS -o /tmp/out.png -H "Authorization: Bearer $TOKEN" \
+            http://localhost:8080/api/jobs/$JOB_ID/download
+          file /tmp/out.png
+
+      - name: Upload binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: toonmint-native
+          path: backend/target/toonmint-backend
+          if-no-files-found: error
