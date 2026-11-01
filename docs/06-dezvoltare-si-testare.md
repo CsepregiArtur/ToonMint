@@ -93,6 +93,12 @@ Fără ele, binarul pornește dar moare cu `UnknownClassException` la primul `Jw
 Fișierul stă într-un director separat intenționat — Spring AOT rescrie
 `META-INF/native-image/com.toonmint/toonmint-backend/` la fiecare build.
 
+Profilul `native` activează și `hibernate-enhance-maven-plugin`: în native-image
+nu se pot genera proxy-uri Hibernate la runtime, deci asocierile `LAZY` (de tip
+`Job.user`) ar arunca `Generation of HibernateProxy instances at runtime is not
+allowed`. Enhancement-ul mută lazy loading la build-time; pe JVM nimic nu se
+schimbă, pentru că pluginul e doar în profil.
+
 ## 3. Servicii externe fără Docker
 
 Proiectul rulează direct pe sistem, fără containere. Profilul `dev` nu are nevoie de
