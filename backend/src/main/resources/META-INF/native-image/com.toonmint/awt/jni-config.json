@@ -1,8 +1,14 @@
 [
   {
-    "name": "java.awt.GraphicsEnvironment"
+    "name": "java.awt.GraphicsEnvironment",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
   },
   {
-    "name": "java.awt.Toolkit"
+    "name": "java.awt.Toolkit",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
   }
 ]
