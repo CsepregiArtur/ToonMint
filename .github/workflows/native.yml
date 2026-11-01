@@ -21,7 +21,7 @@ concurrency:
 jobs:
   native:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
 
@@ -33,126 +33,76 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           cache: maven
 
+      # Jar obisnuit (fara AOT), folosit doar ca sa rulam aplicatia sub tracing agent.
+      - name: Build JVM jar
+        working-directory: backend
+        run: mvn -B -DskipTests package
+
+      # libawt rezolva la JNI_OnLoad o lista de clase si metode care nu sunt
+      # vizibile static (FindClass/GetStaticMethodID/GetMethodID). Agentul le
+      # descopera ruland exact fluxul pe care il testam, in loc sa le adunam manual.
+      - name: Collect native-image metadata
+        working-directory: backend
+        run: |
+          set -uo pipefail
+          set +e
+
+          rm -rf data target/native-agent
+          mkdir -p target/native-agent
+          java -agentlib:native-image-agent=config-output-dir=target/native-agent \
+            -jar target/toonmint-backend-1.0.0.jar > agent.log 2>&1 &
+          PID=$!
+
+          ./scripts/native-smoke.sh
+          RC=$?
+
+          kill $PID 2>/dev/null
+          wait $PID 2>/dev/null
+
+          if [ $RC -ne 0 ]; then
+            echo "::error::JVM smoke flow failed while collecting metadata"
+            echo "::group::agent.log"
+            tail -80 agent.log
+            echo "::endgroup::"
+            exit 1
+          fi
+
+          # Continutul directorului e generat la fiecare rulare; nu se comite.
+          mkdir -p src/main/resources/META-INF/native-image/com.toonmint/agent
+          for f in target/native-agent/*.json; do
+            [ -e "$f" ] || continue
+            cp "$f" src/main/resources/META-INF/native-image/com.toonmint/agent/
+            echo "collected $(basename "$f") ($(wc -c < "$f") bytes)"
+          done
+
       - name: Compile native image
         working-directory: backend
         run: mvn -B -Pnative native:compile -DskipTests
 
-      # Startup + ImageIO/Thumbnailator round-trip inside the native binary.
-      # The dev profile uses a local H2 database and StubImageProvider, so no external service is needed.
       - name: Smoke test
         working-directory: backend
         run: |
-          # Actions injectează `bash -e`; fiecare pas de mai jos are verificare
-          # explicită, ca un 4xx să nu omoare scriptul înainte de diagnostic.
           set -uo pipefail
           set +e
 
+          rm -rf data
           START=$(date +%s%3N)
           ./target/toonmint-backend > native.log 2>&1 &
           PID=$!
           trap 'kill $PID 2>/dev/null || true' EXIT
 
-          dump() {
+          ./scripts/native-smoke.sh
+          RC=$?
+
+          if [ $RC -ne 0 ]; then
+            echo "::error::native binary failed the smoke flow"
             echo "::group::native.log"
             tail -200 native.log
             echo "::endgroup::"
-          }
-
-          UP=0
-          for _ in $(seq 1 300); do
-            if ! kill -0 $PID 2>/dev/null; then
-              echo "::error::Native binary exited before becoming healthy"
-              wait $PID
-              dump
-              exit 1
-            fi
-            if curl -fsS http://localhost:8080/actuator/health > /dev/null 2>&1; then
-              UP=1
-              break
-            fi
-            sleep 0.2
-          done
-
-          if [ $UP -ne 1 ]; then
-            echo "::error::Application did not become healthy within 60s"
-            dump
             exit 1
           fi
 
-          echo "startup: $(( $(date +%s%3N) - START )) ms"
-
-          # /actuator/health răspunde înainte ca ApplicationRunner-ele să termine,
-          # iar conturile demo sunt create de DemoDataSeeder, deci se reîncearcă.
-          TOKEN=""
-          RESP=""
-          for _ in $(seq 1 30); do
-            RESP=$(curl -sS -X POST http://localhost:8080/api/auth/demo-login \
-              -H 'Content-Type: application/json' -d '{}' 2>/dev/null)
-            TOKEN=$(printf '%s' "$RESP" | jq -r '.token // empty' 2>/dev/null)
-            [ -n "$TOKEN" ] && break
-            sleep 1
-          done
-          if [ -z "$TOKEN" ]; then
-            echo "::error::demo-login never returned a token; last response: $RESP"
-            dump
-            exit 1
-          fi
-
-          STYLES=$(curl -sS http://localhost:8080/api/styles 2>/dev/null)
-          STYLE_ID=$(printf '%s' "$STYLES" | jq -r '.[0].id // empty' 2>/dev/null)
-          if [ -z "$STYLE_ID" ]; then
-            echo "::error::style catalog unusable; response: $STYLES"
-            dump
-            exit 1
-          fi
-
-          # 1400x1400 forțează downscale-ul din ImageOptimizer (max 1024), deci
-          # exercită Thumbnailator + Graphics2D din binarul nativ.
-          python3 - <<'PY'
-          import struct, zlib
-
-          w = h = 1400
-          raw = (b'\x00' + bytes([200, 120, 40]) * w) * h
-
-          def chunk(kind, data):
-              return (struct.pack('>I', len(data)) + kind + data
-                      + struct.pack('>I', zlib.crc32(kind + data) & 0xffffffff))
-
-          png = (b'\x89PNG\r\n\x1a\n'
-                 + chunk(b'IHDR', struct.pack('>IIBBBBB', w, h, 8, 2, 0, 0, 0))
-                 + chunk(b'IDAT', zlib.compress(raw, 9))
-                 + chunk(b'IEND', b''))
-          open('/tmp/in.png', 'wb').write(png)
-          PY
-          ls -l /tmp/in.png
-          CREATED=$(curl -sS -X POST http://localhost:8080/api/jobs \
-            -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
-            -d "{\"styleId\":\"$STYLE_ID\",\"imageBase64\":\"$(base64 -w0 /tmp/in.png)\"}" 2>/dev/null)
-          JOB_ID=$(printf '%s' "$CREATED" | jq -r '.id // empty' 2>/dev/null)
-          if [ -z "$JOB_ID" ]; then
-            echo "::error::job creation failed; response: $CREATED"
-            dump
-            exit 1
-          fi
-          echo "job $JOB_ID created"
-
-          STATUS=PENDING
-          for _ in $(seq 1 60); do
-            STATUS=$(curl -sS -H "Authorization: Bearer $TOKEN" \
-              http://localhost:8080/api/jobs/$JOB_ID 2>/dev/null | jq -r '.status // empty' 2>/dev/null)
-            [ "$STATUS" = "COMPLETED" ] && break
-            [ "$STATUS" = "FAILED" ] && { echo "::error::Job failed"; dump; exit 1; }
-            sleep 1
-          done
-          if [ "$STATUS" != "COMPLETED" ]; then
-            echo "::error::Job ended in state '$STATUS'"
-            dump
-            exit 1
-          fi
-
-          curl -fsS -o /tmp/out.png -H "Authorization: Bearer $TOKEN" \
-            http://localhost:8080/api/jobs/$JOB_ID/download
-          file /tmp/out.png
+          echo "startup + flow: $(( $(date +%s%3N) - START )) ms"
 
       - name: Upload binary
         uses: actions/upload-artifact@v4
@@ -161,10 +111,13 @@ jobs:
           path: backend/target/toonmint-backend
           if-no-files-found: error
 
-      - name: Upload smoke log
+      - name: Upload logs
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: native-smoke-log
-          path: backend/native.log
+          name: native-logs
+          path: |
+            backend/native.log
+            backend/agent.log
+            backend/src/main/resources/META-INF/native-image/com.toonmint/agent/*.json
           if-no-files-found: ignore
