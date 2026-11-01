@@ -26,3 +26,7 @@ backend/data-*/
 
 # Logs
 *.log
+# Artefacte de rulare (jar, binare native, frontend compilat) — regenerate din build
+runtime/*
+!runtime/run.sh
+!runtime/deploy-native.sh
