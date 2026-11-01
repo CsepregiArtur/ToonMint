@@ -106,7 +106,25 @@ jobs:
             exit 1
           fi
 
-          convert -size 640x480 gradient:orange-blue /tmp/in.png
+          # 1400x1400 forțează downscale-ul din ImageOptimizer (max 1024), deci
+          # exercită Thumbnailator + Graphics2D din binarul nativ.
+          python3 - <<'PY'
+          import struct, zlib
+
+          w = h = 1400
+          raw = (b'\x00' + bytes([200, 120, 40]) * w) * h
+
+          def chunk(kind, data):
+              return (struct.pack('>I', len(data)) + kind + data
+                      + struct.pack('>I', zlib.crc32(kind + data) & 0xffffffff))
+
+          png = (b'\x89PNG\r\n\x1a\n'
+                 + chunk(b'IHDR', struct.pack('>IIBBBBB', w, h, 8, 2, 0, 0, 0))
+                 + chunk(b'IDAT', zlib.compress(raw, 9))
+                 + chunk(b'IEND', b''))
+          open('/tmp/in.png', 'wb').write(png)
+          PY
+          ls -l /tmp/in.png
           CREATED=$(curl -sS -X POST http://localhost:8080/api/jobs \
             -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
             -d "{\"styleId\":\"$STYLE_ID\",\"imageBase64\":\"$(base64 -w0 /tmp/in.png)\"}" 2>/dev/null)
