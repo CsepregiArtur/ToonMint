@@ -42,7 +42,11 @@ jobs:
       - name: Smoke test
         working-directory: backend
         run: |
+          # Actions injectează `bash -e`; fiecare pas de mai jos are verificare
+          # explicită, ca un 4xx să nu omoare scriptul înainte de diagnostic.
           set -uo pipefail
+          set +e
+
           START=$(date +%s%3N)
           ./target/toonmint-backend > native.log 2>&1 &
           PID=$!
@@ -58,7 +62,7 @@ jobs:
           for _ in $(seq 1 300); do
             if ! kill -0 $PID 2>/dev/null; then
               echo "::error::Native binary exited before becoming healthy"
-              wait $PID; echo "exit code: $?"
+              wait $PID
               dump
               exit 1
             fi
@@ -75,51 +79,55 @@ jobs:
             exit 1
           fi
 
-          curl -fsS http://localhost:8080/actuator/health
           echo "startup: $(( $(date +%s%3N) - START )) ms"
 
           # /actuator/health răspunde înainte ca ApplicationRunner-ele să termine,
           # iar conturile demo sunt create de DemoDataSeeder, deci se reîncearcă.
           TOKEN=""
+          RESP=""
           for _ in $(seq 1 30); do
-            TOKEN=$(curl -fsS -X POST http://localhost:8080/api/auth/demo-login \
-              -H 'Content-Type: application/json' -d '{}' 2>/dev/null | jq -r '.token // empty')
+            RESP=$(curl -sS -X POST http://localhost:8080/api/auth/demo-login \
+              -H 'Content-Type: application/json' -d '{}' 2>/dev/null)
+            TOKEN=$(printf '%s' "$RESP" | jq -r '.token // empty' 2>/dev/null)
             [ -n "$TOKEN" ] && break
             sleep 1
           done
           if [ -z "$TOKEN" ]; then
-            echo "::error::demo-login never returned a token"
+            echo "::error::demo-login never returned a token; last response: $RESP"
             dump
             exit 1
           fi
 
-          STYLE_ID=$(curl -fsS http://localhost:8080/api/styles | jq -r '.[0].id')
-          if [ -z "$STYLE_ID" ] || [ "$STYLE_ID" = "null" ]; then
-            echo "::error::style catalog is empty"
+          STYLES=$(curl -sS http://localhost:8080/api/styles 2>/dev/null)
+          STYLE_ID=$(printf '%s' "$STYLES" | jq -r '.[0].id // empty' 2>/dev/null)
+          if [ -z "$STYLE_ID" ]; then
+            echo "::error::style catalog unusable; response: $STYLES"
             dump
             exit 1
           fi
 
           convert -size 640x480 gradient:orange-blue /tmp/in.png
-          JOB_ID=$(curl -fsS -X POST http://localhost:8080/api/jobs \
+          CREATED=$(curl -sS -X POST http://localhost:8080/api/jobs \
             -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
-            -d "{\"styleId\":\"$STYLE_ID\",\"imageBase64\":\"$(base64 -w0 /tmp/in.png)\"}" | jq -r '.id // empty')
+            -d "{\"styleId\":\"$STYLE_ID\",\"imageBase64\":\"$(base64 -w0 /tmp/in.png)\"}" 2>/dev/null)
+          JOB_ID=$(printf '%s' "$CREATED" | jq -r '.id // empty' 2>/dev/null)
           if [ -z "$JOB_ID" ]; then
-            echo "::error::job creation failed"
+            echo "::error::job creation failed; response: $CREATED"
             dump
             exit 1
           fi
+          echo "job $JOB_ID created"
 
           STATUS=PENDING
           for _ in $(seq 1 60); do
-            STATUS=$(curl -fsS -H "Authorization: Bearer $TOKEN" \
-              http://localhost:8080/api/jobs/$JOB_ID | jq -r .status)
+            STATUS=$(curl -sS -H "Authorization: Bearer $TOKEN" \
+              http://localhost:8080/api/jobs/$JOB_ID 2>/dev/null | jq -r '.status // empty' 2>/dev/null)
             [ "$STATUS" = "COMPLETED" ] && break
             [ "$STATUS" = "FAILED" ] && { echo "::error::Job failed"; dump; exit 1; }
             sleep 1
           done
           if [ "$STATUS" != "COMPLETED" ]; then
-            echo "::error::Job ended in state $STATUS"
+            echo "::error::Job ended in state '$STATUS'"
             dump
             exit 1
           fi
