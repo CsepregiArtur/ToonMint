@@ -25,7 +25,13 @@ systemd.
 
 ### 1.1 Nativ (recomandat)
 
-Pe server, ca root:
+Scripturile se actualizează din repo (nu vin cu release-ul), deci întâi un pull:
+
+```bash
+cd /root/ToonMint && git pull
+```
+
+Apoi, ca root:
 
 ```bash
 /root/ToonMint/runtime/deploy-native.sh --latest          # ultimul release
