@@ -1,0 +1,18 @@
+[Unit]
+Description=Install the latest verified ToonMint native build
+Documentation=https://github.com/CsepregiArtur/ToonMint/blob/main/deploy/README.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=root
+ExecStart=/root/ToonMint/runtime/deploy-native.sh --latest
+
+# Un deploy eșuat lasă binarul anterior în funcțiune (scriptul face rollback singur),
+# deci nu e motiv de reîncercare imediată. Timer-ul reia la tick-ul următor.
+TimeoutStartSec=600
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=toonmint-deploy

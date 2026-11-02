@@ -6,10 +6,11 @@ Aplicația rulează **doar pe loopback**; traficul public intră prin **Cloudfla
 
 | Componentă | Locație pe server |
 |---|---|
-| Jar backend | `/root/ToonMint-runtime/app.jar` |
-| Frontend (build Vite) | `/root/ToonMint-runtime/web/` |
+| Binar nativ (preferat) | `/root/ToonMint/runtime/bin/toonmint-backend` |
+| Jar backend (fallback JVM) | `/root/ToonMint/runtime/app.jar` |
+| Frontend (build Vite) | `/root/ToonMint/runtime/web/` |
 | Variabile de mediu | `/etc/toonmint/toonmint.env` |
-| Serviciu | `toonmint-api.service` (`systemctl restart toonmint-api`) |
+| Serviciu | `toonmint-api.service`, `ExecStart=/root/ToonMint/runtime/run.sh` (`systemctl restart toonmint-api`) |
 | nginx | `/etc/nginx/sites-available/toonmint.conf` (symlink în `sites-enabled`) |
 | Snippet headere | `/etc/nginx/snippets/toonmint-security-headers.conf` |
 
@@ -17,19 +18,50 @@ Aplicația rulează **doar pe loopback**; traficul public intră prin **Cloudfla
 
 ## 1. Backend
 
+CI publică un release la fiecare push pe `main`: tag `native-<sha>`, asset
+`toonmint-backend-linux-amd64`. `run.sh` preferă automat binarul nativ dacă există
+în `bin/`, altfel cade pe `app.jar`, deci trecerea JVM → nativ nu schimbă unit-ul
+systemd.
+
+### 1.1 Nativ (recomandat)
+
+Pe server, ca root:
+
+```bash
+/root/ToonMint/runtime/deploy-native.sh --latest          # ultimul release
+/root/ToonMint/runtime/deploy-native.sh --tag native-<sha> # un release anume
+/root/ToonMint/runtime/deploy-native.sh --rollback         # revine la versiunea anterioară
+```
+
+Scriptul validează că fișierul e ELF și are mărime plauzibilă, păstrează binarul
+curent ca `bin/toonmint-backend.prev`, repornește `toonmint-api` și face health
+check pe `127.0.0.1:8080/actuator/health`; dacă health check-ul pică, revine singur
+la versiunea anterioară. Sare peste restart dacă binarul descărcat e identic.
+
+Automatizare opțională — serverul trage singur ultimul release la fiecare 10 minute:
+
+```bash
+scp deploy/systemd/toonmint-deploy.service deploy/systemd/toonmint-deploy.timer \
+  192.168.1.99:/etc/systemd/system/
+ssh 192.168.1.99 'systemctl daemon-reload && systemctl enable --now toonmint-deploy.timer'
+journalctl -u toonmint-deploy -n 20 --no-pager   # ce a făcut fiecare rulare
+```
+
+### 1.2 JVM (fallback)
+
 ```bash
 cd backend
 mvn -DskipTests package                       # → target/toonmint-backend-<versiune>.jar
 
-ssh 192.168.1.99 'cp -a /root/ToonMint-runtime/app.jar \
-  /root/ToonMint-runtime/app.jar.bak.$(date +%Y%m%d-%H%M%S)'
+ssh 192.168.1.99 'cp -a /root/ToonMint/runtime/app.jar \
+  /root/ToonMint/runtime/app.jar.bak.$(date +%Y%m%d-%H%M%S)'
 
-scp target/toonmint-backend-<versiune>.jar 192.168.1.99:/root/ToonMint-runtime/app.jar.new
+scp target/toonmint-backend-<versiune>.jar 192.168.1.99:/root/ToonMint/runtime/app.jar.new
 
 ssh 192.168.1.99 'set -e
-  chown toonmint:toonmint /root/ToonMint-runtime/app.jar.new
-  chmod 640               /root/ToonMint-runtime/app.jar.new
-  cd /root/ToonMint-runtime && mv app.jar.new app.jar
+  chown toonmint:toonmint /root/ToonMint/runtime/app.jar.new
+  chmod 640               /root/ToonMint/runtime/app.jar.new
+  cd /root/ToonMint/runtime && mv app.jar.new app.jar
   systemctl restart toonmint-api
   curl --retry 20 --retry-delay 1 --retry-connrefused \
     -s -o /dev/null -w "api=%{http_code}\n" http://127.0.0.1:8080/api/styles
@@ -39,12 +71,15 @@ ssh 192.168.1.99 'set -e
 **Rollback:** `mv app.jar.bak.<timestamp> app.jar && systemctl restart toonmint-api`.
 
 > ⚠️ Numele jar-ului conține versiunea din `pom.xml`. După un bump, actualizează comanda.
+>
+> ⚠️ Cât timp există `bin/toonmint-backend`, `run.sh` ignoră `app.jar`. Ca să revii
+> pe JVM, șterge binarul: `rm /root/ToonMint/runtime/bin/toonmint-backend`.
 
 ## 2. Frontend
 
 ```bash
 cd frontend && npm run build
-rsync -az --delete dist/ 192.168.1.99:/root/ToonMint-runtime/web/
+rsync -az --delete dist/ 192.168.1.99:/root/ToonMint/runtime/web/
 ```
 
 `index.html` nu se cachează (`no-cache, must-revalidate`), iar `/assets/*` are hash →
