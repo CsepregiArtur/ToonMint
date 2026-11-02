@@ -25,26 +25,19 @@ systemd.
 
 ### 1.1 Nativ (recomandat)
 
-Scripturile se actualizează din repo (nu vin cu release-ul), deci întâi un pull:
+Un singur punct de intrare: `runtime/deploy.sh`. Face `git pull` în `/root/ToonMint`
+(ca să aducă scripturile la zi) și apoi instalează ultimul binar nativ.
 
 ```bash
-cd /root/ToonMint && git pull
+/root/ToonMint/runtime/deploy.sh                       # pull + ultimul release
+/root/ToonMint/runtime/deploy.sh --tag native-<sha>    # un release anume
+/root/ToonMint/runtime/deploy.sh --rollback            # revine la binarul anterior
 ```
 
-Apoi, ca root:
+Dacă vrei doar binarul, fără pull: `/root/ToonMint/runtime/deploy-native.sh --latest`.
 
-```bash
-/root/ToonMint/runtime/deploy-native.sh --latest          # ultimul release
-/root/ToonMint/runtime/deploy-native.sh --tag native-<sha> # un release anume
-/root/ToonMint/runtime/deploy-native.sh --rollback         # revine la versiunea anterioară
-```
-
-Scriptul validează că fișierul e ELF și are mărime plauzibilă, păstrează binarul
-curent ca `bin/toonmint-backend.prev`, repornește `toonmint-api` și face health
-check pe `127.0.0.1:8080/actuator/health`; dacă health check-ul pică, revine singur
-la versiunea anterioară. Sare peste restart dacă binarul descărcat e identic.
-
-Automatizare opțională — serverul trage singur ultimul release la fiecare 10 minute:
+**Automat**: `toonmint-deploy.timer` rulează `deploy.sh` la fiecare 10 minute, deci
+serverul își ia singur și codul, și binarul.
 
 ```bash
 scp deploy/systemd/toonmint-deploy.service deploy/systemd/toonmint-deploy.timer \
@@ -52,6 +45,15 @@ scp deploy/systemd/toonmint-deploy.service deploy/systemd/toonmint-deploy.timer 
 ssh 192.168.1.99 'systemctl daemon-reload && systemctl enable --now toonmint-deploy.timer'
 journalctl -u toonmint-deploy -n 20 --no-pager   # ce a făcut fiecare rulare
 ```
+
+Ce garantează lanțul: validează că fișierul e ELF și are mărime plauzibilă, păstrează
+binarul curent ca `bin/toonmint-backend.prev`, repornește `toonmint-api` și face health
+check pe `127.0.0.1:8080/actuator/health`; dacă health check-ul pică, revine singur la
+versiunea anterioară. Sare peste restart când binarul e identic **și** codul nu s-a
+schimbat (dacă pull-ul a adus modificări în `runtime/`, repornește oricum).
+
+> Auto-deploy înseamnă și migrații Flyway automate la fiecare release. Dacă vrei
+> control, dezactivează timer-ul și rulează `deploy.sh` manual.
 
 ### 1.2 JVM (fallback)
 

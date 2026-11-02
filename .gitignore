@@ -30,3 +30,4 @@ backend/data-*/
 runtime/*
 !runtime/run.sh
 !runtime/deploy-native.sh
+!runtime/deploy.sh

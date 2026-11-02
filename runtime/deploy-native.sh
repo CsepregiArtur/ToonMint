@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
 # Instalează binarul nativ ToonMint produs de CI (GraalVM native-image).
-# Rulează pe server ca root, fie manual, fie din deploy-hub.
+# Rulează pe server ca root: manual, sau automat prin runtime/deploy.sh (timer).
 #
 #   ./deploy-native.sh --file /tmp/toonmint-backend      # binar local
 #   ./deploy-native.sh --latest                          # ultimul release GitHub
 #   ./deploy-native.sh --tag v1.2.3                      # un release anume
 #   ./deploy-native.sh --rollback                        # revine la binarul anterior
+#   ./deploy-native.sh --latest --force                  # reinstalează chiar dacă e identic
 #
 # Garanții:
 #  - validează că fișierul e ELF și are mărime plauzibilă înainte de instalare
@@ -25,11 +26,12 @@ HEALTH_URL="http://127.0.0.1:8080/actuator/health"
 LOG="/var/log/toonmint-deploy.log"
 MIN_BYTES=$((20 * 1024 * 1024))
 NO_RESTART=0
+FORCE=0
 MODE="" VALUE=""
 
 log() { echo "$(date -Is) $*" | tee -a "$LOG"; }
 
-usage() { sed -n '2,16p' "$0"; exit 2; }
+usage() { sed -n '2,14p' "$0"; exit 2; }
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -37,6 +39,7 @@ while [[ $# -gt 0 ]]; do
         --latest)     MODE="--latest"; shift ;;
         --rollback)   MODE="--rollback"; shift ;;
         --no-restart) NO_RESTART=1; shift ;;
+        --force)      FORCE=1; shift ;;
         -h|--help)    usage ;;
         *) echo "argument necunoscut: $1" >&2; usage ;;
     esac
@@ -133,7 +136,8 @@ verify_binary "$STAGING" || { rm -f "$STAGING"; exit 1; }
 log "binar valid: $(stat -c%s "$STAGING") B"
 
 # dacă e identic cu cel instalat, nu are rost să repornim aplicația
-if [[ -x "$CURRENT" ]] && cmp -s "$STAGING" "$CURRENT"; then
+# (--force sare peste asta, pentru cazul în care s-au schimbat scripturile din runtime/)
+if [[ $FORCE -eq 0 ]] && [[ -x "$CURRENT" ]] && cmp -s "$STAGING" "$CURRENT"; then
     log "binar identic cu cel instalat — nimic de făcut"
     rm -f "$STAGING"
     exit 0
