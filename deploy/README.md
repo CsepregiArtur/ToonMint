@@ -83,6 +83,18 @@ ssh 192.168.1.99 'set -e
 > ⚠️ Cât timp există `bin/toonmint-backend`, `run.sh` ignoră `app.jar`. Ca să revii
 > pe JVM, șterge binarul: `rm /root/ToonMint/runtime/bin/toonmint-backend`.
 
+### 1.3 Verificare
+
+Script read-only care confirmă că lanțul e legat cap-coadă (cod, timer, binar,
+proces, health):
+
+```bash
+/root/ToonMint/deploy/verify-autodeploy.sh; echo "exit=$?"
+```
+
+Iese 0 doar dacă nu există niciun FAIL. `WARN` semnalează stări neideale, dar
+funcționale (ex. checkout-ul e un commit în urmă, următorul tick îl aduce).
+
 ## 2. Frontend
 
 ```bash
