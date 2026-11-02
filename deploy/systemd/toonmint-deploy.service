@@ -7,7 +7,7 @@ Wants=network-online.target
 [Service]
 Type=oneshot
 User=root
-ExecStart=/root/ToonMint/runtime/deploy-native.sh --latest
+ExecStart=/root/ToonMint/runtime/deploy.sh --latest
 
 # Un deploy eșuat lasă binarul anterior în funcțiune (scriptul face rollback singur),
 # deci nu e motiv de reîncercare imediată. Timer-ul reia la tick-ul următor.
