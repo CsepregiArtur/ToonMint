@@ -4,7 +4,7 @@
 # schimbări în systemd: doar pui binarul în bin/ și repornești serviciul.
 set -euo pipefail
 
-APP_DIR="/root/ToonMint/runtime"
+APP_DIR="${TOONMINT_RUNTIME:-/root/ToonMint/runtime}"
 NATIVE="$APP_DIR/bin/toonmint-backend"
 JAR="$APP_DIR/app.jar"
 # Bind pe loopback: aplicația nu trebuie să asculte pe toate interfețele.

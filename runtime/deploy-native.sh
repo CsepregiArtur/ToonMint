@@ -13,7 +13,7 @@
 #  - health check după restart; la eșec revine automat la versiunea anterioară
 set -euo pipefail
 
-APP_DIR="/root/ToonMint-runtime"
+APP_DIR="${TOONMINT_RUNTIME:-/root/ToonMint/runtime}"
 BIN_DIR="$APP_DIR/bin"
 CURRENT="$BIN_DIR/toonmint-backend"
 PREVIOUS="$BIN_DIR/toonmint-backend.prev"

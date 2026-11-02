@@ -12,7 +12,8 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  # Necesar pentru a publica release-ul cu binarul; pe PR tokenul rămâne read-only.
+  contents: write
 
 concurrency:
   group: native-${{ github.ref }}
@@ -68,6 +69,25 @@ jobs:
           name: toonmint-native
           path: backend/target/toonmint-backend
           if-no-files-found: error
+
+      - name: Publish release
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        working-directory: backend
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          # deploy-native.sh descarcă exact acest nume de asset din release.
+          cp target/toonmint-backend /tmp/toonmint-backend-linux-amd64
+          TAG="native-$(git rev-parse --short=12 HEAD)"
+          if gh release view "$TAG" > /dev/null 2>&1; then
+            echo "release $TAG există deja, actualizez asset-ul"
+          else
+            gh release create "$TAG" --latest \
+              --title "Native build ${GITHUB_SHA:0:7}" \
+              --notes "Binar GraalVM pentru commit $GITHUB_SHA. Instalare pe server: runtime/deploy-native.sh --tag $TAG"
+          fi
+          gh release upload "$TAG" /tmp/toonmint-backend-linux-amd64 --clobber
 
       - name: Upload smoke log
         if: always()

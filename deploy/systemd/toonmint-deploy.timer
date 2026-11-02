@@ -1,0 +1,15 @@
+[Unit]
+Description=Check for a new verified ToonMint native build
+Documentation=https://github.com/CsepregiArtur/ToonMint/blob/main/deploy/README.md
+
+[Timer]
+# La fiecare 10 minute. Verificarea e o cerere către GitHub Releases și iese
+# imediat când binarul instalat e identic, deci e ieftină.
+OnBootSec=5min
+OnUnitActiveSec=10min
+AccuracySec=30s
+RandomizedDelaySec=30s
+Persistent=true
+
+[Install]
+WantedBy=timers.target
