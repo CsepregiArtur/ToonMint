@@ -26,13 +26,19 @@ systemd.
 ### 1.1 Nativ (recomandat)
 
 Un singur punct de intrare: `runtime/deploy.sh`. Face `git pull` în `/root/ToonMint`
-(ca să aducă scripturile la zi) și apoi instalează ultimul binar nativ.
+(ca să aducă scripturile la zi), reconstruiește **frontend-ul** dacă s-a schimbat
+ceva în `frontend/` și apoi instalează ultimul binar nativ.
 
 ```bash
-/root/ToonMint/runtime/deploy.sh                       # pull + ultimul release
+/root/ToonMint/runtime/deploy.sh                       # pull + frontend + ultimul release
 /root/ToonMint/runtime/deploy.sh --tag native-<sha>    # un release anume
 /root/ToonMint/runtime/deploy.sh --rollback            # revine la binarul anterior
+/root/ToonMint/runtime/deploy.sh --skip-frontend      # doar backend-ul
 ```
+
+Frontend-ul are nevoie de **Node 20.19+ / 22.12+** și `npm` pe server (build-ul Vite
+se face local, nu în CI). Serviciul se restartează doar când se schimbă `backend/`
+sau `runtime/` — un deploy care aduce doar UI nu întrerupe aplicația.
 
 Dacă vrei doar binarul, fără pull: `/root/ToonMint/runtime/deploy-native.sh --latest`.
 
@@ -46,11 +52,14 @@ ssh 192.168.1.99 'systemctl daemon-reload && systemctl enable --now toonmint-dep
 journalctl -u toonmint-deploy -n 20 --no-pager   # ce a făcut fiecare rulare
 ```
 
-Ce garantează lanțul: validează că fișierul e ELF și are mărime plauzibilă, păstrează
-binarul curent ca `bin/toonmint-backend.prev`, repornește `toonmint-api` și face health
-check pe `127.0.0.1:8080/actuator/health`; dacă health check-ul pică, revine singur la
-versiunea anterioară. Sare peste restart când binarul e identic **și** codul nu s-a
-schimbat (dacă pull-ul a adus modificări în `runtime/`, repornește oricum).
+Ce garanționează lanțul: compară metadatele release-ului (tag, mărime, `sha256`)
+înainte de a descărca ceva — dacă binarul instalat e deja cel mai nou, iese imediat,
+fără 235 MB de trafic la fiecare tick de timer. La instalare verifică `sha256`-ul
+publicat de GitHub, validează că fișierul e ELF și are mărime plauzibilă, păstrează
+binarul curent ca `bin/toonmint-backend.prev`, repornește `toonmint-api` și face
+health check pe `127.0.0.1:8080/actuator/health`; dacă health check-ul pică, revine
+singur la versiunea anterioară. Release-ul se marchează ca văzut în `bin/.release`
+înainte de restart, ca un release stricat să nu fie reîncercat la nesfârșit.
 > ⚠️ **AWT are nevoie de bibliotecile JDK la runtime.** Binarul nativ încarcă
 > `libawt`/`libfontmanager` prin `JNI_OnLoad`; fără ele, `run.sh` pornește aplicația,
 > `health=UP`, dar **fiecare job moare** cu `UnsatisfiedLinkError: Can't load library:
