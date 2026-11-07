@@ -51,7 +51,13 @@ binarul curent ca `bin/toonmint-backend.prev`, repornește `toonmint-api` și fa
 check pe `127.0.0.1:8080/actuator/health`; dacă health check-ul pică, revine singur la
 versiunea anterioară. Sare peste restart când binarul e identic **și** codul nu s-a
 schimbat (dacă pull-ul a adus modificări în `runtime/`, repornește oricum).
-
+> ⚠️ **AWT are nevoie de bibliotecile JDK la runtime.** Binarul nativ încarcă
+> `libawt`/`libfontmanager` prin `JNI_OnLoad`; fără ele, `run.sh` pornește aplicația,
+> `health=UP`, dar **fiecare job moare** cu `UnsatisfiedLinkError: Can't load library:
+> awt` și rămâne în `PROCESSING`. `run.sh` adaugă automat `<jdk>/lib` și
+> `<jdk>/lib/server` în `LD_LIBRARY_PATH` (suprascrie cu `TOONMINT_JAVA_LIB`); verifică
+> în log `[run] java libs=...`. Health check-ul **nu** prinde problema — singurul test
+> real e un job dus până la `COMPLETED`.
 > Auto-deploy înseamnă și migrații Flyway automate la fiecare release. Dacă vrei
 > control, dezactivează timer-ul și rulează `deploy.sh` manual.
 
