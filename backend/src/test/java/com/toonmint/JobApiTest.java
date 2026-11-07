@@ -7,6 +7,7 @@ import org.springframework.test.web.servlet.MvcResult;
 
 import java.time.Duration;
 
+import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.startsWith;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -133,6 +134,46 @@ class JobApiTest extends ApiTestSupport {
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("BAD_REQUEST"));
+    }
+
+    /**
+     * WEBP e acceptat de UI (și convertit în browser), dar serverul nu îl poate decoda:
+     * JDK-ul nu are decodor WebP, deci ImageIO.read ar întoarce null și utilizatorul ar
+     * primi un placeholder în loc de poza lui. Respingem explicit, cu un mesaj clar.
+     */
+    @Test
+    void webpUploadIsRejectedWithAClearMessage() throws Exception {
+        String email = uniqueEmail("webp");
+        String token = registerAndGetToken(email);
+        giveCredits(email, 2);
+
+        mockMvc.perform(multipart("/api/jobs")
+                        .file(new MockMultipartFile("image", "photo.webp", "image/webp",
+                                webpHeader(64)))
+                        .param("style_id", "anime_v1")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("BAD_REQUEST"))
+                .andExpect(jsonPath("$.message").value(containsString("JPEG or PNG")));
+
+        assertEquals(2, userByEmail(email).getCreditBalance(),
+                "o validare picată nu are voie să consume creditul");
+    }
+
+    /**
+     * Antet minim RIFF/WEBP — atât cât să fie recunoscut de detectMimeType.
+     */
+    private static byte[] webpHeader(int length) {
+        byte[] bytes = new byte[length];
+        bytes[0] = 'R';
+        bytes[1] = 'I';
+        bytes[2] = 'F';
+        bytes[3] = 'F';
+        bytes[8] = 'W';
+        bytes[9] = 'E';
+        bytes[10] = 'B';
+        bytes[11] = 'P';
+        return bytes;
     }
 
     record Base64Payload(String styleId, String imageBase64) {

@@ -96,7 +96,15 @@ public class JobService {
         }
         String mimeType = ImageBytes.detectMimeType(image);
         if (mimeType == null) {
-            throw ApiException.badRequest("Unsupported image format. Use PNG, JPEG or WEBP");
+            throw ApiException.badRequest("Unsupported image format. Use PNG or JPEG");
+        }
+        // JDK-ul nu are decodor WebP (plugin-ul e doar pe desktop, prin componente
+        // native). Fără verificarea asta, ImageIO.read întoarce null și utilizatorul
+        // primește un placeholder în loc de poza lui. Clientul web convertește în
+        // browser, deci pe aici trec doar clienții API care trimit WEBP direct.
+        if ("image/webp".equals(mimeType)) {
+            throw ApiException.badRequest(
+                    "WEBP is not supported by the server. Save the photo as JPEG or PNG and try again.");
         }
         return mimeType;
     }
