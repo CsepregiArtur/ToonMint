@@ -1,0 +1,56 @@
+name: auto-merge
+
+# Fără aprobări manuale în fluxul zilnic.
+#
+# Push direct pe `main` e permis de branch protection (cere doar check-ul de
+# identitate, nu review), iar pipeline-ul e cel care decide dacă un commit ajunge
+# pe server: `native` construiește binarul, rulează smoke test-ul (login → job PNG
+# → job JPEG → COMPLETED) și publică release-ul **doar** dacă trece; apoi
+# `toonmint-deploy.timer` instalează release-ul.
+#
+# Workflow-ul de față închide aceeași buclă pentru pull request-uri: dacă build-ul
+# nativ e verde, PR-ul se mergează singur. Nu înlocuiește verificarea — o
+# folosește ca poartă.
+on:
+  workflow_run:
+    workflows: ["native"]
+    types: [completed]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+  actions: write
+
+jobs:
+  merge:
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.event == 'pull_request' &&
+       github.event.workflow_run.conclusion == 'success')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Merge the pull request that produced this green build
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          set -euo pipefail
+          if [ -z "${SHA:-}" ]; then
+            echo "rulare manuală — nu am un commit de căutat"
+            exit 0
+          fi
+          pr=$(gh api "repos/$REPO/commits/$SHA/pulls" \
+                  --jq 'map(select(.state == "open")) | .[0].number // empty')
+          if [ -z "$pr" ]; then
+            echo "niciun PR deschis pentru $SHA — nimic de făcut"
+            exit 0
+          fi
+          echo "build verde pentru PR #$pr ($SHA) — îl mergez"
+          gh pr merge "$pr" --merge --delete-branch --repo "$REPO"
+
+          # Un push făcut cu GITHUB_TOKEN nu declanșează alte workflow-uri, deci
+          # pornim explicit build-ul pe main: el produce release-ul pe care
+          # timer-ul de pe server îl instalează.
+          gh workflow run native.yml --ref main --repo "$REPO"

@@ -1,5 +1,24 @@
 # Deploy ToonMint
 
+## 0. Fluxul zilnic — fără aprobări
+
+Nu e nevoie de pull request și de niciun click: se face **push direct pe `main`**
+(branch protection cere doar check-ul de identitate, nu review). Restul se întâmplă
+singur:
+
+1. push pe `main` → CI `native` construiește binarul și rulează smoke test-ul
+   (login demo → job **PNG** → job **JPEG** → `COMPLETED`)
+2. **doar** dacă smoke-ul trece, CI publică release-ul `native-<sha>`
+3. `toonmint-deploy.timer` (la 10 minute) rulează `runtime/deploy.sh`: `git pull`,
+   rebuild frontend dacă s-a schimbat `frontend/`, instalează binarul nou, health
+   check, rollback automat la eșec
+
+Un commit stricat rămâne pe `main`, dar **nu ajunge pe server**: fără release
+publicat, timer-ul nu are ce instala. Pentru cine lucrează cu PR-uri,
+`.github/workflows/auto-merge.yml` le mergează singur când build-ul e verde și
+repornește build-ul pe `main` (un push făcut cu `GITHUB_TOKEN` nu declanșează
+workflow-uri).
+
 Server: `192.168.1.99` (`App-Hosting`), acces prin cheie SSH, user `root`.
 Aplicația rulează **doar pe loopback**; traficul public intră prin **Cloudflare Tunnel**
 (`cloudflared` → `127.0.0.1:8088` → nginx → SPA + proxy `/api/` → Spring Boot `:8080`).
