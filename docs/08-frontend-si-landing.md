@@ -125,8 +125,9 @@ Când backendul rulează cu `app.demo.enabled=true` (profilul `dev`), `LoginView
 - **Operator demo** → cont cu rol `ADMIN`, pentru consola `/admin`.
 
 Butonul apelează `POST /api/auth/demo-login` și primește un JWT normal, deci restul
-aplicației funcționează identic cu un login real. În `prod` endpoint-ul nu există
-(proprietatea este forțată pe `false`), iar UI-ul nu afișează butoanele.
+aplicației funcționează identic cu un login real. În `prod` proprietatea este forțată
+pe `false`, `GET /api/auth/demo-login` întoarce `404`, `demoAvailable()` din store
+returnează `null`, iar UI-ul nu afișează butoanele.
 
 ## 7. Stiluri
 

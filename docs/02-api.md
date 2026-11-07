@@ -181,8 +181,9 @@ valid până la expirare. Tokenul necunoscut nu produce eroare — rezultatul ce
 `GET /api/auth/demo-login` → `{ "available": true, "accounts": [...] }`
 
 `POST /api/auth/demo-login` cu `{}` (cont demo) sau `{ "role": "ADMIN" }` (operator) →
-același `AuthResponse` ca la login. Endpoint-ul nu există când `app.demo.enabled=false`
-(profilul `prod`).
+același `AuthResponse` ca la login. Când `app.demo.enabled=false` (profilul `prod`),
+ambele rute întorc `404` cu `code: DEMO_DISABLED`; verificarea se face la runtime, la
+fiecare cerere, ca să fie valabilă și în binarul nativ.
 
 ### `POST /api/users`
 

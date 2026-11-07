@@ -622,19 +622,28 @@ valorile de la build, nu de cele de la rulare. Efecte măsurate în producție:
 evaluată la rulare. **Aici e diferența dintre local și producție — codul e corect, binarul
 livrat nu respectă profilul.**
 
+> **Rezolvat în cod** (commit `fix(native): decide demo login, temp store si rate limiter la
+> runtime`): cele patru bean-uri nu mai folosesc `@ConditionalOnProperty`. `DemoAuthController`
+> și `DemoDataSeeder` verifică `properties.demo().enabled()` la runtime, iar
+> `TempImageStoreConfig` și `RateLimiterConfig` aleg implementarea la pornire. Log-urile de
+> start afișează `Rate limiter: redis|memory` și `Temp image store: redis|memory`, deci se
+> vede imediat ce a ales binarul. Tabelul de mai sus rămâne ca descriere a stării
+> **dinainte** de fix.
+
 ### 12.4 Fix recomandat (ordinea impactului)
 
 1. **Generarea reală** — în `/etc/toonmint/toonmint.env`: `AI_PROVIDER=gemini`, apoi
    `systemctl restart toonmint-api`. Verificare: log „Using Gemini image provider with model
    gemini-3.1-flash-image”, job > 2 s, output 1024 px.
-2. **Demo închis la runtime** — pe lângă `@ConditionalOnProperty`, controller-ul și seeder-ul
-   trebuie să verifice `properties.demo().enabled()` la fiecare cerere/pornire și să răspundă
-   `404` când e `false`. Altfel, odată intrat în binarul nativ, endpointul rămâne expus.
-3. **Redis selectat la runtime** — mutați alegerea `RedisTempImageStore` vs `InMemoryTempImageStore`
-   și a rate limiter-ului din `@ConditionalOnProperty` într-un `@Bean` cu `if` la runtime (modelul
-   din `AiProviderConfig`), ca mediul să decidă la pornire, nu la build.
+2. ~~**Demo închis la runtime**~~ — ✅ făcut: `DemoAuthController` răspunde `404 DEMO_DISABLED`,
+   iar `DemoDataSeeder` nu mai creează conturi când `app.demo.enabled=false`. Conturile create
+   de versiunile anterioare rămân în baza de date și trebuie șterse/neutralizate manual
+   (au parole fixe, cunoscute, deci intră și prin `/api/auth/login`).
+3. ~~**Redis selectat la runtime**~~ — ✅ făcut: `TempImageStoreConfig` și `RateLimiterConfig`
+   aleg la pornire, pe modelul din `AiProviderConfig`.
 4. **Alternativ** — build nativ cu `SPRING_PROFILES_ACTIVE=prod` în CI (cere valori dummy pentru
-   `${JWT_SECRET}` etc.). Nu înlocuiește punctele 2–3, care rămân valabile pentru orice build.
+   `${JWT_SECRET}` etc.). Rămâne util ca plasă de siguranță, dar nu mai e necesar pentru
+   demo/Redis.
 
 ### 12.5 Notă operațională: testarea producției din CLI
 

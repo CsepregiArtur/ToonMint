@@ -330,8 +330,8 @@ Dacă `mvn test` semnalează `class path resource [...] cannot be opened`, rulea
 | emailurile nu pleacă | `MAIL_ENABLED=false` sau parolă de cont | vezi [04 – Email](04-email-google-smtp.md) |
 | `CORS` în browser | origine nepermisă | `CORS_ALLOWED_ORIGINS=http://localhost:5173` |
 | jobul se termină în <1 s și întoarce fotografia posterizată | provider `stub`, nu Gemini | log `Using stub image provider` / `Job N completed with provider stub`; `AI_PROVIDER=gemini` + `GEMINI_API_KEY` |
-| `POST /api/auth/demo-login` răspunde `200` în producție | condiție `@ConditionalOnProperty` evaluată la build în binarul nativ | `journalctl -u toonmint-api` → `app.demo.enabled=true` deși profilul e `prod`; vezi [12 §12.3](12-verificare-lansare.md#123-cauze-identificate-pe-server) |
-| `RATE_LIMIT_BACKEND=redis` dar `redis-cli DBSIZE` rămâne `0` | la fel: bean-ul Redis nu a intrat în binarul nativ | aceeași secțiune 12.3 |
+| `POST /api/auth/demo-login` răspunde `404 DEMO_DISABLED` | `DEMO_LOGIN_ENABLED=false` (sau lipsă) în `/etc/toonmint/toonmint.env` | `grep DEMO /etc/toonmint/toonmint.env` |
+| `RATE_LIMIT_BACKEND=redis` dar `redis-cli DBSIZE` rămâne `0` | backend-ul ales la pornire e `memory`, sau Redis nu răspunde | log la start: `Rate limiter: redis` / `Temp image store: redis` |
 
 ## 9. Resetarea mediului local
 

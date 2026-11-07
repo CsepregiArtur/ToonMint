@@ -74,9 +74,12 @@ Autorizarea la nivel de obiect este explicită în servicii:
   nici revocabil. Expiră practic odată cu cache-ul imaginii (10 minute).
 - Joburile de trial nu au utilizator; ele apar în consola de operator cu `guestEmail`
   pentru eventuale investigații de abuz.
-- `POST /api/auth/demo-login` emite token valid **fără parolă**. Există doar când
-  `app.demo.enabled=true`, iar profilul `prod` forțează valoarea pe `false`, deci ruta
-  nu este înregistrată în producție. Nu activa această proprietate pe un mediu public.
+- `POST /api/auth/demo-login` emite token valid **fără parolă**. Răspunde doar când
+  `app.demo.enabled=true`; cu valoarea `false` (profilul `prod`) întoarce `404
+  DEMO_DISABLED` și seeder-ul nu creează conturi. Verificarea e la runtime, nu prin
+  `@ConditionalOnProperty` — în binarul nativ acea condiție e evaluată de Spring AOT la
+  build, deci nu ar respecta configurația de la pornire. Nu activa proprietatea pe un
+  mediu public: conturile demo au parole fixe, cunoscute.
 
 ## 4. Date și confidențialitate
 

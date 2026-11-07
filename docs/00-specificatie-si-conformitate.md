@@ -106,5 +106,6 @@ Google Play), iar backendul primește aceleași webhook-uri — vezi
 - Generarea gratuită este limitată la **o imagine per adresă de email** (nu per dispozitiv).
   Limitarea suplimentară per IP există, dar nu împiedică folosirea mai multor adrese;
   pentru control strict este nevoie de verificare de email sau de captcha.
-- Conturile demo și endpoint-ul `/api/auth/demo-login` există **doar** în profilul `dev`;
-  profilul `prod` forțează `app.demo.enabled=false`, deci ruta nu este înregistrată.
+- Conturile demo și endpoint-ul `/api/auth/demo-login` sunt active **doar** când
+  `app.demo.enabled=true` (implicit în `dev`); profilul `prod` forțează `false`, iar
+  controller-ul și seeder-ul verifică valoarea la runtime (`404 DEMO_DISABLED`).
