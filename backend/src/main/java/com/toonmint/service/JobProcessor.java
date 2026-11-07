@@ -85,6 +85,12 @@ public class JobProcessor {
         } catch (RuntimeException ex) {
             log.warn("Job {} failed: {}", jobId, ex.getMessage());
             fail(job, ex.getMessage() == null ? "Image generation failed" : ex.getMessage());
+        } catch (LinkageError ex) {
+            // Erori de legare (bibliotecă nativă lipsă, metodă JNI neregistrată) nu sunt
+            // RuntimeException: fără ramura asta thread-ul moare și jobul rămâne veșnic
+            // în PROCESSING, iar clientul își epuizează polling-ul cu creditul consumat.
+            log.error("Job {} failed with a linkage error", jobId, ex);
+            fail(job, "Image processing is unavailable on the server. Your credit has been refunded, please try again later.");
         }
     }
 
