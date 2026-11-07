@@ -41,7 +41,7 @@ function onFileChange(event) {
 }
 
 // Aplică o fotografie venită din orice sursă (input de fișier sau camera nativă).
-function acceptSelection(selected) {
+async function acceptSelection(selected) {
   if (!['image/png', 'image/jpeg', 'image/webp'].includes(selected.type)) {
     error.value = t('studio.errType')
     clearSelection()
@@ -52,11 +52,46 @@ function acceptSelection(selected) {
     clearSelection()
     return
   }
+  let normalized = selected
+  if (selected.type === 'image/webp') {
+    try {
+      normalized = await webpToPng(selected)
+    } catch (conversionError) {
+      // Browser foarte vechi sau fișier corupt: mai bine spunem clar decât să trimitem
+      // ceva ce serverul nu poate decoda.
+      error.value = t('studio.errType')
+      clearSelection()
+      return
+    }
+  }
+  if (normalized.size > 10 * 1024 * 1024) {
+    error.value = t('studio.errSize')
+    clearSelection()
+    return
+  }
   if (previewUrl.value) {
     URL.revokeObjectURL(previewUrl.value)
   }
-  file.value = selected
-  previewUrl.value = URL.createObjectURL(selected)
+  file.value = normalized
+  previewUrl.value = URL.createObjectURL(normalized)
+}
+
+// Serverul decodează doar PNG/JPEG (JDK-ul nu are decodor WebP), deci transformăm
+// poza în PNG aici, în browser, și promisiunea din UI rămâne valabilă.
+async function webpToPng(selected) {
+  const bitmap = await createImageBitmap(selected)
+  const canvas = document.createElement('canvas')
+  canvas.width = bitmap.width
+  canvas.height = bitmap.height
+  canvas.getContext('2d').drawImage(bitmap, 0, 0)
+  if (typeof bitmap.close === 'function') {
+    bitmap.close()
+  }
+  const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'))
+  if (!blob) {
+    throw new Error('webp conversion failed')
+  }
+  return new File([blob], selected.name.replace(/\.[^.]+$/, '') + '.png', { type: 'image/png' })
 }
 
 // În aplicație, fotografia vine din cameră sau galerie prin plugin-ul nativ.
