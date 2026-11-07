@@ -1,5 +1,6 @@
 import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
+import { locale } from '../i18n'
 import { applyConsent, clearTrackingCookies, loadConsentGatedTags } from '../lib/analytics'
 import { SITE } from '../legal/site'
 
@@ -113,7 +114,7 @@ export const useConsentStore = defineStore('consent', () => {
   const decidedAtLabel = computed(() => {
     if (!record.value?.decidedAt) return ''
     const date = new Date(record.value.decidedAt)
-    return Number.isNaN(date.getTime()) ? '' : date.toLocaleDateString('ro-RO')
+    return Number.isNaN(date.getTime()) ? '' : date.toLocaleDateString(locale.value)
   })
 
   return {

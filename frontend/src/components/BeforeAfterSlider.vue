@@ -1,5 +1,6 @@
 <script setup>
 import { computed, ref } from 'vue'
+import { useI18n } from '../i18n'
 
 // Slider comparativ „înainte / după”: o singură bară care descoperă imaginea toon
 // peste fotografia originală. Funcționează cu mouse, touch și tastatură.
@@ -13,6 +14,7 @@ const props = defineProps({
 
 const position = ref(props.initial)
 const dragging = ref(false)
+const { t } = useI18n()
 
 // Procentul curent, limitat între 0 și 100.
 const percent = computed(() => Math.min(100, Math.max(0, position.value)))
@@ -81,7 +83,7 @@ function endDrag() {
       min="0"
       max="100"
       step="1"
-      aria-label="Compară fotografia originală cu varianta toon"
+      :aria-label="t('landing.slider.compare')"
     />
   </div>
 </template>

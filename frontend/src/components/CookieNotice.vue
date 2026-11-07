@@ -40,7 +40,7 @@ watch(
 </script>
 
 <template>
-  <div v-if="showBar" class="cookie-notice" role="region" aria-label="Cookie consent">
+  <div v-if="showBar" class="cookie-notice" role="region" :aria-label="t('consent.regionLabel')">
     <p>
       🍪 {{ t('consent.text') }}
       <router-link to="/legal/cookies">{{ t('legal.cookies') }}</router-link> ·

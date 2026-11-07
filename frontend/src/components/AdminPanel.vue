@@ -1,9 +1,11 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useAdminStore } from '../stores/admin'
+import { useI18n } from '../i18n'
 
 // Consola operatorului: toate job-urile, statistici, emailuri și evenimente RevenueCat.
 const admin = useAdminStore()
+const { t, locale } = useI18n()
 
 const actionError = ref('')
 const busy = ref(false)
@@ -49,7 +51,7 @@ async function markRemoved(job) {
 
 // Marchează un job ca FAILED (declanșează rambursarea creditului).
 async function markFailed(job) {
-  if (!window.confirm('Marchezi jobul ca eșuat? Creditul va fi rambursat utilizatorului.')) {
+  if (!window.confirm(t('admin.confirmFailed'))) {
     return
   }
   await runAction(() => admin.updateStatus(job.id, 'FAILED'))
@@ -57,7 +59,7 @@ async function markFailed(job) {
 
 // Șterge definitiv metadatele jobului.
 async function removeJob(job) {
-  if (!window.confirm('Ștergi jobul din listă?')) {
+  if (!window.confirm(t('admin.confirmDelete'))) {
     return
   }
   await runAction(() => admin.deleteJob(job.id))
@@ -67,7 +69,7 @@ async function removeJob(job) {
 async function sendEmail() {
   actionError.value = ''
   if (recipientCount.value === 0) {
-    actionError.value = 'Selectează cel puțin un destinatar.'
+    actionError.value = t('admin.needRecipient')
     return
   }
   busy.value = true
@@ -141,10 +143,10 @@ onMounted(refreshAll)
   <section class="stack">
     <header class="page-header">
       <div>
-        <h1>Consolă operator</h1>
-        <p class="muted">Aprobă, șterge job-uri și trimite emailuri către utilizatori.</p>
+        <h1>{{ t('admin.title') }}</h1>
+        <p class="muted">{{ t('admin.subtitle') }}</p>
       </div>
-      <button class="btn ghost" :disabled="busy" @click="refreshAll">Reîncarcă tot</button>
+      <button class="btn ghost" :disabled="busy" @click="refreshAll">{{ t('admin.refreshAll') }}</button>
     </header>
 
     <p v-if="actionError" class="error">{{ actionError }}</p>
@@ -152,23 +154,23 @@ onMounted(refreshAll)
 
     <div class="card">
       <header class="card-header">
-        <h2>Statistici</h2>
+        <h2>{{ t('admin.stats') }}</h2>
         <div class="row">
           <input v-model="statsFrom" type="date" class="compact" />
           <input v-model="statsTo" type="date" class="compact" />
-          <button class="btn ghost" @click="refreshStats">Actualizează</button>
+          <button class="btn ghost" @click="refreshStats">{{ t('admin.refresh') }}</button>
         </div>
       </header>
       <div v-if="admin.stats" class="stat-grid">
-        <div class="stat"><span class="muted">Job-uri</span><strong>{{ admin.stats.totalJobs }}</strong></div>
-        <div class="stat"><span class="muted">Finalizate</span><strong>{{ admin.stats.completed }}</strong></div>
-        <div class="stat"><span class="muted">Eșuate</span><strong>{{ admin.stats.failed }}</strong></div>
-        <div class="stat"><span class="muted">Rată succes</span><strong>{{ successPercent() }}</strong></div>
-        <div class="stat"><span class="muted">Credite consumate</span><strong>{{ admin.stats.creditsConsumed }}</strong></div>
+        <div class="stat"><span class="muted">{{ t('admin.jobs') }}</span><strong>{{ admin.stats.totalJobs }}</strong></div>
+        <div class="stat"><span class="muted">{{ t('jobs.status.COMPLETED') }}</span><strong>{{ admin.stats.completed }}</strong></div>
+        <div class="stat"><span class="muted">{{ t('jobs.status.FAILED') }}</span><strong>{{ admin.stats.failed }}</strong></div>
+        <div class="stat"><span class="muted">{{ t('admin.successRate') }}</span><strong>{{ successPercent() }}</strong></div>
+        <div class="stat"><span class="muted">{{ t('admin.creditsUsed') }}</span><strong>{{ admin.stats.creditsConsumed }}</strong></div>
       </div>
       <table v-if="admin.stats?.byStyle?.length" class="table">
         <thead>
-          <tr><th>Stil</th><th>Job-uri</th><th>Finalizate</th><th>Eșuate</th><th>Credite</th></tr>
+          <tr><th>{{ t('admin.style') }}</th><th>{{ t('admin.jobs') }}</th><th>{{ t('jobs.status.COMPLETED') }}</th><th>{{ t('jobs.status.FAILED') }}</th><th>{{ t('common.credits') }}</th></tr>
         </thead>
         <tbody>
           <tr v-for="row in admin.stats.byStyle" :key="row.styleId">
@@ -184,82 +186,82 @@ onMounted(refreshAll)
 
     <div class="card">
       <header class="card-header">
-        <h2>Toate job-urile</h2>
-        <span class="muted small">{{ admin.totalJobs }} în total</span>
+        <h2>{{ t('admin.allJobs') }}</h2>
+        <span class="muted small">{{ t('admin.totalCount', { count: admin.totalJobs }) }}</span>
       </header>
       <table class="table">
         <thead>
-          <tr><th>#</th><th>Stil</th><th>Status</th><th>Credite</th><th>Creat</th><th>Acțiuni</th></tr>
+          <tr><th>#</th><th>{{ t('admin.style') }}</th><th>{{ t('admin.status') }}</th><th>{{ t('common.credits') }}</th><th>{{ t('admin.created') }}</th><th>{{ t('admin.actions') }}</th></tr>
         </thead>
         <tbody>
           <tr v-for="job in admin.jobs" :key="job.id">
             <td>{{ job.id }}</td>
             <td>{{ job.styleLabel || job.styleId }}</td>
-            <td><span class="badge" :class="`status-${job.status.toLowerCase()}`">{{ job.status }}</span></td>
+            <td><span class="badge" :class="`status-${job.status.toLowerCase()}`">{{ t(`jobs.status.${job.status}`) }}</span></td>
             <td>{{ job.creditsConsumed }}</td>
-            <td class="muted small">{{ new Date(job.createdAt).toLocaleString('ro-RO') }}</td>
+            <td class="muted small">{{ new Date(job.createdAt).toLocaleString(locale) }}</td>
             <td class="row">
-              <button class="btn small ghost" :disabled="busy" @click="markFailed(job)">Marchează eșuat</button>
-              <button class="btn small danger" :disabled="busy" @click="markRemoved(job)">Marchează șters</button>
-              <button class="btn small danger" :disabled="busy" @click="removeJob(job)">Șterge</button>
+              <button class="btn small ghost" :disabled="busy" @click="markFailed(job)">{{ t('admin.markFailed') }}</button>
+              <button class="btn small danger" :disabled="busy" @click="markRemoved(job)">{{ t('admin.markRemoved') }}</button>
+              <button class="btn small danger" :disabled="busy" @click="removeJob(job)">{{ t('jobs.delete') }}</button>
             </td>
           </tr>
         </tbody>
       </table>
-      <div v-if="!admin.jobs.length" class="empty-state">Nu există job-uri.</div>
+      <div v-if="!admin.jobs.length" class="empty-state">{{ t('admin.noJobs') }}</div>
     </div>
 
     <div class="card">
       <header class="card-header">
-        <h2>Trimite email</h2>
-        <span class="muted small">{{ recipientCount }} destinatari selectați</span>
+        <h2>{{ t('admin.sendEmail') }}</h2>
+        <span class="muted small">{{ t('admin.selectedRecipients', { count: recipientCount }) }}</span>
       </header>
       <form class="form-grid" @submit.prevent="sendEmail">
         <label class="field span-2">
-          <span>Utilizatori</span>
+          <span>{{ t('admin.users') }}</span>
           <select v-model="emailForm.selectedUserIds" multiple size="6">
             <option v-for="user in admin.users" :key="user.id" :value="user.id">
-              {{ user.email }} · {{ user.creditBalance }} credite
+              {{ user.email }} · {{ t('common.credits', { count: user.creditBalance }) }}
             </option>
           </select>
         </label>
 
         <label class="field span-2">
-          <span>Adrese suplimentare (separate prin virgulă)</span>
-          <input v-model="emailForm.extraEmails" placeholder="client1@example.com, client2@example.com" />
+          <span>{{ t('admin.extraEmails') }}</span>
+          <input v-model="emailForm.extraEmails" :placeholder="t('admin.emailPlaceholder')" />
         </label>
 
         <label class="field span-2">
-          <span>Subiect</span>
+          <span>{{ t('admin.subject') }}</span>
           <input v-model="emailForm.subject" required maxlength="200" />
         </label>
 
         <label class="field span-2">
-          <span>Mesaj</span>
+          <span>{{ t('admin.message') }}</span>
           <textarea v-model="emailForm.text" rows="5" required></textarea>
         </label>
 
         <div class="actions span-2">
-          <button class="btn primary" :disabled="busy || recipientCount === 0">Trimite</button>
+          <button class="btn primary" :disabled="busy || recipientCount === 0">{{ t('admin.send') }}</button>
         </div>
       </form>
       <p v-if="admin.emailResult" class="success">
-        Trimis: {{ admin.emailResult.sent }} / {{ admin.emailResult.requested }}
-        <span v-if="admin.emailResult.simulated">(simulat — MAIL_ENABLED=false)</span>
+        {{ t('admin.emailSent', { sent: admin.emailResult.sent, requested: admin.emailResult.requested }) }}
+        <span v-if="admin.emailResult.simulated">({{ t('admin.simulated') }} — MAIL_ENABLED=false)</span>
       </p>
       <p v-if="admin.emailResult?.failures?.length" class="error small">
-        Eșecuri: {{ admin.emailResult.failures.join('; ') }}
+        {{ t('admin.failures') }}: {{ admin.emailResult.failures.join('; ') }}
       </p>
     </div>
 
     <div class="card">
       <header class="card-header">
-        <h2>Evenimente RevenueCat</h2>
-        <span class="muted small">Ultimele webhook-uri primite</span>
+        <h2>{{ t('admin.revenueCatEvents') }}</h2>
+        <span class="muted small">{{ t('admin.latestWebhooks') }}</span>
       </header>
       <table v-if="admin.events.length" class="table">
         <thead>
-          <tr><th>Tip</th><th>Produs</th><th>Status</th><th>Mesaj</th><th>Primit</th></tr>
+          <tr><th>{{ t('admin.type') }}</th><th>{{ t('admin.product') }}</th><th>{{ t('admin.status') }}</th><th>{{ t('admin.message') }}</th><th>{{ t('admin.received') }}</th></tr>
         </thead>
         <tbody>
           <tr v-for="event in admin.events" :key="event.eventId">
@@ -267,11 +269,11 @@ onMounted(refreshAll)
             <td>{{ event.productId || '—' }}</td>
             <td>{{ event.status }}</td>
             <td class="muted small">{{ event.message || '—' }}</td>
-            <td class="muted small">{{ new Date(event.receivedAt).toLocaleString('ro-RO') }}</td>
+            <td class="muted small">{{ new Date(event.receivedAt).toLocaleString(locale) }}</td>
           </tr>
         </tbody>
       </table>
-      <div v-else class="empty-state">Niciun eveniment încă.</div>
+      <div v-else class="empty-state">{{ t('admin.noEvents') }}</div>
     </div>
   </section>
 </template>

@@ -1,4 +1,4 @@
-#  how to test ToonMint
+# ToonMint
 
 Aplicație photo-to-cartoon: utilizatorul încarcă o fotografie, alege un stil, iar serverul
 generează o versiune cartoon/anime.
@@ -246,3 +246,6 @@ docs/              documentație în română
    parolă) pleacă automat, iar cu `MAIL_ENABLED=false` sunt doar scrise în log.
 5. **Autentificare**: `register` creează contul neconfirmat și trimite codul → `verify-email`
    confirmă adresa și emite JWT; `forgot-password` + `reset-password` refac parola cu un cod.
+
+
+Git Push orice modificare: git switch -c fix/<ceva> → commit → git push -u origin fix/<ceva>

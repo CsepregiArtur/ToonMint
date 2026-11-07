@@ -101,7 +101,7 @@ const steps = computed(() => [
           before="/demo/before.jpg"
           after="/demo/after.jpg"
           :before-label="t('trial.before')"
-          after-label="Toon"
+          :after-label="t('trial.after')"
           :initial="52"
           class="hero-demo"
         />

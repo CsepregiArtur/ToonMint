@@ -145,7 +145,7 @@ onBeforeUnmount(() => {
         :before="trial.beforeUrl"
         :after="trial.afterUrl"
         :before-label="t('trial.before')"
-        after-label="Toon"
+        :after-label="t('trial.after')"
         :initial="55"
       />
       <div class="result-actions">
@@ -202,7 +202,7 @@ onBeforeUnmount(() => {
             v-model.trim="email"
             type="email"
             autocomplete="email"
-            placeholder="you@example.com"
+            :placeholder="t('trial.emailPlaceholder')"
             required
             @blur="checkEmail"
           />
