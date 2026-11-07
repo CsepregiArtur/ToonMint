@@ -16,6 +16,13 @@ export const useJobsStore = defineStore('jobs', {
     styles: []
   }),
 
+  getters: {
+    // Există joburi încă în lucru: lista trebuie reîmprospătată automat, altfel
+    // utilizatorul vede „Processing” până dă reload.
+    hasActiveJobs: (state) =>
+      state.items.some((job) => job.status === 'PENDING' || job.status === 'PROCESSING')
+  },
+
   actions: {
     // Încarcă stilurile disponibile pentru selectorul din formularul de upload.
     async loadStyles() {
@@ -27,13 +34,16 @@ export const useJobsStore = defineStore('jobs', {
     },
 
     // Încarcă job-urile utilizatorului curent, opțional filtrate după status sau cuvânt cheie.
-    async loadMine({ status = '', keyword = '', page = 0 } = {}) {
+    // `silent` reîmprospătează în fundal, fără să golească lista cu spinner-ul de încărcare.
+    async loadMine({ status = '', keyword = '', page = 0, silent = false } = {}) {
       const auth = useAuthStore()
       if (!auth.user) {
         await auth.loadProfile()
       }
-      this.loading = true
-      this.error = ''
+      if (!silent) {
+        this.loading = true
+        this.error = ''
+      }
       this.filterStatus = status
       this.keyword = keyword
       this.page = page
@@ -46,9 +56,14 @@ export const useJobsStore = defineStore('jobs', {
         this.items = data.items
         this.totalItems = data.totalItems
       } catch (error) {
-        this.error = error.message
+        // O reîmprospătare din fundal nu trebuie să ascundă lista deja afișată.
+        if (!silent) {
+          this.error = error.message
+        }
       } finally {
-        this.loading = false
+        if (!silent) {
+          this.loading = false
+        }
       }
     },
 
