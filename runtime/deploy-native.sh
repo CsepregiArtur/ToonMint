@@ -19,6 +19,7 @@ BIN_DIR="$APP_DIR/bin"
 CURRENT="$BIN_DIR/toonmint-backend"
 PREVIOUS="$BIN_DIR/toonmint-backend.prev"
 STAGING="$BIN_DIR/.staging-$$"
+STAMP_FILE="$BIN_DIR/.release"
 REPO="CsepregiArtur/ToonMint"
 ASSET="toonmint-backend-linux-amd64"
 SERVICE="toonmint-api"
@@ -28,6 +29,7 @@ MIN_BYTES=$((20 * 1024 * 1024))
 NO_RESTART=0
 FORCE=0
 MODE="" VALUE=""
+ASSET_URL="" ASSET_STAMP="" ASSET_DIGEST=""
 
 log() { echo "$(date -Is) $*" | tee -a "$LOG"; }
 
@@ -85,30 +87,62 @@ rollback_to_previous() {
     restart_and_check || log "EROARE: și rollback-ul a eșuat — intervenție manuală necesară"
 }
 
-download_release_asset() {
-    local api_url="$1" meta url
-    if ! meta=$(curl -fsSL --max-time 30 "$api_url" 2>/dev/null); then
+fetch_release_asset() {
+    local api_url="$1" meta_json
+    if ! meta_json=$(curl -fsSL --max-time 30 "$api_url" 2>/dev/null); then
         log "EROARE: niciun release disponibil (API: $api_url)"
         return 1
     fi
-    url=$(printf '%s' "$meta" | python3 -c '
+    # Doar metadatele (tag, mărime, sha256) — descărcarea propriu-zisă are loc abia
+    # după ce știm că e deja instalat. Altfel timer-ul ar trage 235 MB la fiecare
+    # rulare, la fiecare 10 minute.
+    mapfile -t meta_lines < <(printf '%s' "$meta_json" | python3 -c '
 import json, sys
 try:
     data = json.load(sys.stdin)
 except Exception:
     sys.exit(0)
-name = sys.argv[1]
-print(next((a.get("browser_download_url", "") for a in data.get("assets", [])
-            if a.get("name") == name), ""))
+asset = next((a for a in data.get("assets", []) if a.get("name") == sys.argv[1]), None)
+if not asset:
+    sys.exit(0)
+print(asset.get("browser_download_url", ""))
+print("%s %s %s" % (data.get("tag_name", ""), asset.get("size", ""), asset.get("updated_at", "")))
+print(asset.get("digest") or "")
 ' "$ASSET")
-    if [[ -z "$url" ]]; then
+    ASSET_URL="${meta_lines[0]:-}"
+    ASSET_STAMP="${meta_lines[1]:-}"
+    ASSET_DIGEST="${meta_lines[2]:-}"
+    if [[ -z "$ASSET_URL" ]]; then
         log "EROARE: release-ul nu conține asset-ul $ASSET"
         return 1
     fi
-    log "descarc $url"
-    if ! curl -fL --retry 3 --max-time 300 -o "$STAGING" "$url"; then
+}
+
+# Release-ul cerut e deja cel instalat? (tag + mărime + updated_at, scrise la instalare)
+already_installed() {
+    [[ $FORCE -eq 0 ]] || return 1
+    [[ -x "$CURRENT" ]] || return 1
+    [[ -n "$ASSET_STAMP" ]] || return 1
+    [[ "$ASSET_STAMP" == "$(cat "$STAMP_FILE" 2>/dev/null)" ]]
+}
+
+download_asset() {
+    log "descarc $ASSET_URL"
+    if ! curl -fL --retry 3 --max-time 300 -o "$STAGING" "$ASSET_URL"; then
         log "EROARE: descărcarea a eșuat"
         return 1
+    fi
+    # GitHub publică sha256 pentru fiecare asset; îl verificăm când există.
+    if [[ "$ASSET_DIGEST" == sha256:* ]]; then
+        local expected actual
+        expected="${ASSET_DIGEST#sha256:}"
+        actual=$(sha256sum "$STAGING" | cut -d' ' -f1)
+        if [[ "$expected" != "$actual" ]]; then
+            log "EROARE: sha256 nu corespunde (așteptat ${expected:0:12}…, primit ${actual:0:12}…)"
+            rm -f "$STAGING"
+            return 1
+        fi
+        log "sha256 verificat"
     fi
 }
 
@@ -122,10 +156,14 @@ case "$MODE" in
         cp "$VALUE" "$STAGING"
         ;;
     --tag)
-        download_release_asset "https://api.github.com/repos/$REPO/releases/tags/$VALUE" >/dev/null || exit 1
+        fetch_release_asset "https://api.github.com/repos/$REPO/releases/tags/$VALUE" || exit 1
+        already_installed && { log "release-ul ${ASSET_STAMP%% *} e deja instalat — nimic de făcut"; exit 0; }
+        download_asset || exit 1
         ;;
     --latest)
-        download_release_asset "https://api.github.com/repos/$REPO/releases/latest" >/dev/null || exit 1
+        fetch_release_asset "https://api.github.com/repos/$REPO/releases/latest" || exit 1
+        already_installed && { log "release-ul ${ASSET_STAMP%% *} e deja instalat — nimic de făcut"; exit 0; }
+        download_asset || exit 1
         ;;
     *)
         usage
@@ -151,6 +189,11 @@ fi
 
 install -m 755 "$STAGING" "$CURRENT"
 rm -f "$STAGING"
+# Marcăm release-ul ca instalat INAINTE de restart: dacă binarul nu pornește și se face
+# rollback, timer-ul nu reîncearcă aceeași versiune la fiecare 10 minute (flapping).
+if [[ -n "$ASSET_STAMP" ]]; then
+    printf '%s\n' "$ASSET_STAMP" > "$STAMP_FILE"
+fi
 log "instalat: $CURRENT"
 
 if [[ $NO_RESTART -eq 1 ]]; then

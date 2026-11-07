@@ -73,4 +73,31 @@ done
 curl -fsS -o /dev/null -H "Authorization: Bearer $token" \
     "$BASE_URL/api/jobs/$job/download" || fail "download failed"
 
+# JPEG trece printr-un decodor nativ (libjavajpeg, prin JNI), spre deosebire de PNG,
+# care e pur Java. Un binar fără callback-urile `JPEGImageReader` în jni-config pică
+# exact aici, cu „NoSuchMethodError: JPEGImageReader.readInputData”, deși PNG-ul trece.
+SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
+JPEG_FILE="$SCRIPT_DIR/../../frontend/public/demo/before.jpg"
+[ -f "$JPEG_FILE" ] || fail "lipsește imaginea JPEG de test ($JPEG_FILE)"
+
+payload=$(mktemp)
+printf '{"styleId":"%s","imageBase64":"%s"}' "$style" "$(base64 < "$JPEG_FILE" | tr -d '\n')" > "$payload"
+
+created=$(curl -sS -X POST "$BASE_URL/api/jobs" \
+    -H "Authorization: Bearer $token" -H 'Content-Type: application/json' \
+    --data @"$payload")
+job=$(printf '%s' "$created" | jq -r '.id // empty' 2>/dev/null)
+[ -n "$job" ] || fail "JPEG job creation failed: $created"
+echo "jpeg job $job created"
+
+status=""
+for _ in $(seq 1 60); do
+    status=$(curl -sS -H "Authorization: Bearer $token" "$BASE_URL/api/jobs/$job" 2>/dev/null \
+        | jq -r '.status // empty' 2>/dev/null)
+    [ "$status" = "COMPLETED" ] && break
+    [ "$status" = "FAILED" ] && fail "JPEG job reported FAILED (decodor JPEG lipsă?)"
+    sleep 1
+done
+[ "$status" = "COMPLETED" ] || fail "JPEG job ended in state '$status'"
+
 echo "SMOKE OK"
