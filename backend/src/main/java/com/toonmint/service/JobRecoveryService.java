@@ -43,6 +43,14 @@ public class JobRecoveryService {
     /** Valoarea folosită dacă proprietatea lipsește din configurație. */
     private static final Duration DEFAULT_MAX_PROCESSING = Duration.ofMinutes(10);
 
+    /**
+     * Cea mai mare valoare care poate fi legată ca {@code java.sql.Timestamp} fără
+     * depășire numerică. {@link Instant#MAX} nu poate fi convertit ("long overflow"
+     * în {@code Timestamp.from}), iar legarea lui ca parametru de query oprește
+     * aplicația la pornire pe PostgreSQL.
+     */
+    private static final Instant LATEST_BINDABLE_INSTANT = Instant.parse("9999-12-31T23:59:59Z");
+
     private final JobRepository jobRepository;
     private final TempImageStore tempImageStore;
     private final CreditService creditService;
@@ -78,7 +86,11 @@ public class JobRecoveryService {
      */
     @EventListener(ApplicationReadyEvent.class)
     public void recoverAfterStartup() {
-        recoverJobsCreatedBefore(processStartedAt, Instant.MAX);
+        // Ambele limite sunt momentul pornirii: la startup nu există worker activ,
+        // deci orice job PENDING/PROCESSING a fost creat sau început de procesul
+        // anterior. Nu folosim Instant.MAX ca limită superioară — vezi
+        // LATEST_BINDABLE_INSTANT.
+        recoverJobsCreatedBefore(processStartedAt, processStartedAt);
     }
 
     /**
@@ -105,11 +117,13 @@ public class JobRecoveryService {
         if (!recoveryEnabled()) {
             return 0;
         }
+        Instant pendingBound = bindable(pendingCreatedBefore);
+        Instant processingBound = bindable(processingStartedBefore);
         Integer recovered = transactionTemplate.execute(status -> {
             int count = requeueOrFail(jobRepository.findByStatusAndCreatedAtBefore(
-                    JobStatus.PENDING, pendingCreatedBefore), "before it started");
+                    JobStatus.PENDING, pendingBound), "before it started");
             count += requeueOrFail(jobRepository.findByStatusAndStartedAtBefore(
-                    JobStatus.PROCESSING, processingStartedBefore), "while it was running");
+                    JobStatus.PROCESSING, processingBound), "while it was running");
             return count;
         });
         if (recovered != null && recovered > 0) {
@@ -145,6 +159,14 @@ public class JobRecoveryService {
             count++;
         }
         return count;
+    }
+
+    /**
+     * Aduce limita într-un interval care poate fi trimis ca parametru JDBC.
+     */
+    private static Instant bindable(Instant bound) {
+        return bound == null || bound.isAfter(LATEST_BINDABLE_INSTANT)
+                ? LATEST_BINDABLE_INSTANT : bound;
     }
 
     /**
