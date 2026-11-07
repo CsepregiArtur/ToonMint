@@ -544,3 +544,119 @@ blochează tăcut. Se adaugă împreună cu ID-urile, pornind în `Report-Only` 
 
 > **Concluzie:** singurul lucru rămas **tehnic** înainte de lansare este regula WAF din
 > Cloudflare (5 minute, după login). Restul e testul E2E cu cont real și un card de test.
+
+---
+
+## 12. Verificare locală vs. producție (2026-11-07)
+
+**Data:** 2026-11-07
+**Scop:** separă o defecțiune de **cod** de una de **mediu**. Același build, rulat local și în
+producție, izolează problema: tot ce se comportă identic e în cod, tot ce diferă e pe server.
+
+**Mediu local:** profil `dev` (H2 pe disc, provider AI `gemini` cu cheia din `.env`, 26 stiluri),
+Java 27 + Maven 3.10, Node 26, macOS, servicii pornite cu `mvn spring-boot:run` și `npm run dev`.
+
+**Producție:** binar nativ `native-896b8aec0a95` (commit `896b8ae`), profil `prod`,
+PostgreSQL 16, Redis, Cloudflare Tunnel.
+
+### 12.1 Local — lanțul complet funcționează ✅
+
+| Verificare | Rezultat |
+|---|---|
+| `GET http://localhost:5173/` (Vite dev) | `200` |
+| `GET /api/styles` | `200`, **26** stiluri |
+| `GET /api/public/trial/eligibility` | `200 {"eligible":true}` |
+| `POST /api/auth/demo-login` | `200`, token `USER` |
+| `POST /api/jobs` (`anime_v1`, JPEG 512×384) | `202 Accepted`, job `PENDING` |
+| Tranziții job | `PENDING → PROCESSING → COMPLETED` în **9,5 s** |
+| `GET /api/jobs/{id}/download` | `200`, `image/png`, **1,65 MB**, **1024×768** |
+| `GET /actuator/health` | `DOWN` — **doar** indicatorul SMTP (`.env` are `MAIL_ENABLED=true` fără `MAIL_USERNAME`/`MAIL_PASSWORD`) |
+| `mvn test` | **79 teste, 0 eșecuri** |
+| `npm run build` | ✅ 174 module, 1,3 s |
+
+Imaginea rezultată local este un desen anime real (Gemini), nu o copie filtrată a fotografiei.
+
+### 12.2 Producție — API-ul e sănătos, generarea NU ❌
+
+| Verificare | Rezultat |
+|---|---|
+| `GET /` și `/studio` | `200`, header-e de securitate + HSTS prezente |
+| `GET /api/styles` | `200`, 26 stiluri |
+| `GET /api/public/billing/catalog` | `200`, 2 abonamente + 1 pachet |
+| `GET /api/users/me` fără token | `401 UNAUTHORIZED` |
+| `GET /api/public/trial/eligibility` | `200` |
+| `GET /actuator/health` (loopback pe server) | `UP` (Redis + SMTP OK) |
+| `POST /api/jobs` … `/download` | `COMPLETED` în **32 ms**, `200`, PNG **512×384**, 41 KB |
+
+Jobul de producție se termină în **32 ms** (local: ~10 s) și întoarce o imagine de
+**aceeași dimensiune cu intrarea**, doar posterizată — adică providerul **`stub`**, nu Gemini.
+Aplicația „răspunde”, dar nu transformă fotografia.
+
+### 12.3 Cauze identificate pe server
+
+Dovada vine din jurnalul serviciului (`journalctl -u toonmint-api`):
+
+```
+The following 1 profile is active: "prod"
+Using stub image provider (set AI_PROVIDER=gemini and GEMINI_API_KEY to call Gemini gemini-3.1-flash-image)
+Demo accounts are enabled (app.demo.enabled=true). Sign in with demo@toonmint.local / … or operator@toonmint.local / …
+```
+
+**a) 🟠 `AI_PROVIDER=stub` în `/etc/toonmint/toonmint.env`.** `GEMINI_API_KEY` este prezentă
+(53 de caractere), deci lipsește doar comutatorul. Consecința: fiecare job scrie în log
+`Job N completed with provider stub` și livrează fotografia posterizată.
+
+**b) 🔴 `@ConditionalOnProperty` este evaluat la *build* în imaginea nativă GraalVM.**
+`.github/workflows/native.yml` compilează cu `mvn -Pnative native:compile` **fără profil**, deci
+la AOT profilul activ este `dev`. Bean-urile condiționate intră sau nu în binar în funcție de
+valorile de la build, nu de cele de la rulare. Efecte măsurate în producție:
+
+| Bean condiționat | Valoare la build (`dev`) | Efect în producție |
+|---|---|---|
+| `DemoAuthController` | `app.demo.enabled=true` | `POST /api/auth/demo-login` → `200`; cu `{"role":"ADMIN"}` emite token **ADMIN** pentru `operator@toonmint.local` fără parolă (confirmat) |
+| `DemoDataSeeder` | `app.demo.enabled=true` | recreează conturile demo la fiecare pornire |
+| `RedisTempImageStore` | `app.temp-store.backend=memory` | imaginile temporare stau în heap; `redis-cli DBSIZE` rămâne `0` după un job, deși Redis răspunde `PONG` |
+| `RateLimiterConfig` (Redis) | `app.rate-limit.backend=memory` | limita e per proces și se resetează la restart, în ciuda `RATE_LIMIT_BACKEND=redis` |
+
+`application-prod.yml` scrie `app.demo.enabled: false`, dar nu ajută: condiția nu mai e
+evaluată la rulare. **Aici e diferența dintre local și producție — codul e corect, binarul
+livrat nu respectă profilul.**
+
+### 12.4 Fix recomandat (ordinea impactului)
+
+1. **Generarea reală** — în `/etc/toonmint/toonmint.env`: `AI_PROVIDER=gemini`, apoi
+   `systemctl restart toonmint-api`. Verificare: log „Using Gemini image provider with model
+   gemini-3.1-flash-image”, job > 2 s, output 1024 px.
+2. **Demo închis la runtime** — pe lângă `@ConditionalOnProperty`, controller-ul și seeder-ul
+   trebuie să verifice `properties.demo().enabled()` la fiecare cerere/pornire și să răspundă
+   `404` când e `false`. Altfel, odată intrat în binarul nativ, endpointul rămâne expus.
+3. **Redis selectat la runtime** — mutați alegerea `RedisTempImageStore` vs `InMemoryTempImageStore`
+   și a rate limiter-ului din `@ConditionalOnProperty` într-un `@Bean` cu `if` la runtime (modelul
+   din `AiProviderConfig`), ca mediul să decidă la pornire, nu la build.
+4. **Alternativ** — build nativ cu `SPRING_PROFILES_ACTIVE=prod` în CI (cere valori dummy pentru
+   `${JWT_SECRET}` etc.). Nu înlocuiește punctele 2–3, care rămân valabile pentru orice build.
+
+### 12.5 Notă operațională: testarea producției din CLI
+
+Cloudflare respinge HTTP/2 fără UA de browser (vezi 1.1). Trec ambele condiții simultan —
+**HTTP/1.1 *și* UA de browser**:
+
+```bash
+curl --http1.1 -A 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36' \
+  https://toonmint.cs-hub.xyz/api/styles
+```
+
+HTTP/2 cu UA de browser → `403`; HTTP/1.1 fără UA → `403`.
+
+### 12.6 Verdict
+
+| Zonă | Local | Producție |
+|---|---|---|
+| API public (styles, billing, trial, auth) | ✅ | ✅ |
+| Generare imagine | ✅ Gemini (~10 s, 1024 px) | ❌ stub (32 ms, posterize) |
+| Autentificare demo | ✅ (intenționat, `dev`) | 🔴 expusă public, inclusiv ADMIN |
+| Persistență temporară / rate limit | memory (intenționat) | memory (neintenționat) |
+
+> **Concluzie:** aplicația nu are nevoie de modificări de cod ca să genereze corect — are nevoie
+> de `AI_PROVIDER=gemini` pe server. Peste asta rămân două probleme reale de *build* nativ
+> (demo expus, Redis ignorat), care trebuie reparate în cod înainte de trafic real.

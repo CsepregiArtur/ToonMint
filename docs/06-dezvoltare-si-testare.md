@@ -247,7 +247,7 @@ limitare de 1000 cereri/minut, `app.jobs.threads=1`.
 
 ## 5. Teste
 
-Suita are 56 de teste de integrare (`@SpringBootTest` + `MockMvc`) care acoperă
+Suita are 79 de teste de integrare (`@SpringBootTest` + `MockMvc`) care acoperă
 fluxurile complete:
 
 | Clasă | Acoperă |
@@ -271,6 +271,29 @@ Rulare țintită:
 mvn test -Dtest=JobApiTest
 mvn test -Dtest='RevenueCatWebhookTest#initialPurchaseActivatesSubscriptionAndGrantsCredits'
 ```
+
+### Verificare locală completă (baseline înainte de a acuza serverul)
+
+Când ceva „nu merge în producție”, rulează întâi fluxul complet local: doar așa poți spune
+dacă defectul e în cod sau în mediul de pe server. Rezultatele de referință (2026-11-07) și
+comparația cu producția sunt în [12 – Verificare de lansare](12-verificare-lansare.md#12-verificare-locală-vs-producție-2026-11-07).
+
+```bash
+# terminal 1
+cd backend && mvn spring-boot:run
+# terminal 2
+cd frontend && npm run dev
+
+# terminal 3 — generare reală end-to-end (~10 s cu Gemini, <1 s cu stub)
+curl -X POST http://localhost:8080/api/auth/demo-login -H 'Content-Type: application/json' -d '{}'
+curl -X POST http://localhost:8080/api/jobs -H "Authorization: Bearer <token>" \
+  -F "style_id=anime_v1" -F "image=@poza.jpg"
+curl http://localhost:8080/api/jobs/<id>
+curl -OJ http://localhost:8080/api/jobs/<id>/download
+```
+
+Un job care se termină în câteva zeci de milisecunde și întoarce imaginea de intrare doar
+posterizată înseamnă provider `stub`, nu Gemini (vezi secțiunea 8).
 
 ## 6. Convenții de cod (necesare pentru depanare)
 
@@ -306,6 +329,9 @@ Dacă `mvn test` semnalează `class path resource [...] cannot be opened`, rulea
 | `503 PAYMENTS_NOT_CONFIGURED` | lipsește linkul RevenueCat | setează `REVENUECAT_PURCHASE_LINK_URL` |
 | emailurile nu pleacă | `MAIL_ENABLED=false` sau parolă de cont | vezi [04 – Email](04-email-google-smtp.md) |
 | `CORS` în browser | origine nepermisă | `CORS_ALLOWED_ORIGINS=http://localhost:5173` |
+| jobul se termină în <1 s și întoarce fotografia posterizată | provider `stub`, nu Gemini | log `Using stub image provider` / `Job N completed with provider stub`; `AI_PROVIDER=gemini` + `GEMINI_API_KEY` |
+| `POST /api/auth/demo-login` răspunde `200` în producție | condiție `@ConditionalOnProperty` evaluată la build în binarul nativ | `journalctl -u toonmint-api` → `app.demo.enabled=true` deși profilul e `prod`; vezi [12 §12.3](12-verificare-lansare.md#123-cauze-identificate-pe-server) |
+| `RATE_LIMIT_BACKEND=redis` dar `redis-cli DBSIZE` rămâne `0` | la fel: bean-ul Redis nu a intrat în binarul nativ | aceeași secțiune 12.3 |
 
 ## 9. Resetarea mediului local
 
