@@ -103,10 +103,12 @@ class StylePreviewServiceTest {
             styles.put("cartoon_v2", new AppProperties.Jobs.Style("Cartoon", "Create a cartoon image."));
         }
         return new AppProperties(
-                new AppProperties.Jwt("0123456789012345678901234567890123", Duration.ofHours(1)),
+                new AppProperties.Jwt("0123456789012345678901234567890123", Duration.ofHours(1),
+                        Duration.ofDays(30)),
                 new AppProperties.Legal("2026-10-31"),
                 new AppProperties.Cors(List.of("http://localhost:5173")),
                 new AppProperties.Jobs(1, 1, 10_485_760, 1024,
+                        false, Duration.ofMinutes(10),
                         "/demo/styles", outputDir.toString(), source.toString(), 0L, 64, 64, styles),
                 new AppProperties.RateLimit(false, "memory", 10),
                 new AppProperties.TempStore("memory", Duration.ofMinutes(10), 100),

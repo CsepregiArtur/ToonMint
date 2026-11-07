@@ -28,9 +28,9 @@ function logout() {
 
 // Încărcăm profilul o singură dată la pornirea aplicației.
 onMounted(() => {
-  if (auth.token) {
-    auth.loadProfile()
-  }
+  // Reia sesiunea: tokenul de acces expiră în 24 de ore, dar tokenul de refresh
+  // ține contul deschis între lansările aplicației.
+  auth.restoreSession()
 })
 </script>
 

@@ -10,6 +10,7 @@ import com.toonmint.web.dto.AuthResponse;
 import com.toonmint.web.dto.CodeSentResponse;
 import com.toonmint.web.dto.LoginRequest;
 import com.toonmint.web.dto.PendingVerificationResponse;
+import com.toonmint.web.dto.RefreshTokenRequest;
 import com.toonmint.web.dto.RegisterRequest;
 import com.toonmint.web.dto.ResetPasswordRequest;
 import com.toonmint.web.dto.UserResponse;
@@ -31,6 +32,7 @@ public class AuthService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
+    private final RefreshTokenService refreshTokens;
     private final VerificationCodeService verificationCodes;
     private final ApplicationEventPublisher events;
     private final RateLimitService rateLimitService;
@@ -38,11 +40,12 @@ public class AuthService {
 
     /**
      * Leagă repository-ul de utilizatori, encoder-ul de parole, serviciul JWT,
-     * emiterea codurilor OTP și rate limiting-ul.
+     * tokenurile de refresh, emiterea codurilor OTP și rate limiting-ul.
      */
     public AuthService(UserRepository userRepository,
                        PasswordEncoder passwordEncoder,
                        JwtService jwtService,
+                       RefreshTokenService refreshTokens,
                        VerificationCodeService verificationCodes,
                        ApplicationEventPublisher events,
                        RateLimitService rateLimitService,
@@ -50,6 +53,7 @@ public class AuthService {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
+        this.refreshTokens = refreshTokens;
         this.verificationCodes = verificationCodes;
         this.events = events;
         this.rateLimitService = rateLimitService;
@@ -103,7 +107,7 @@ public class AuthService {
      * <p>Limitarea se face pe două chei: IP-ul oprește un singur host care încearcă
      * multe parole, iar emailul oprește un atac distribuit pe același cont.
      */
-    @Transactional(readOnly = true)
+    @Transactional
     public AuthResponse login(LoginRequest request, String clientIp) {
         rateLimitService.check("login-ip:" + ipKey(clientIp));
         rateLimitService.check("login-email:" + normalizeEmail(request.email()));
@@ -182,15 +186,53 @@ public class AuthService {
             user.markEmailVerified();
         }
         userRepository.save(user);
+        // Parola veche nu mai trebuie să țină deschisă nicio sesiune.
+        refreshTokens.revokeAll(user.getId());
         return issueToken(user);
     }
 
     /**
-     * Construiește răspunsul de autentificare cu token și profil.
+     * Schimbă un token de refresh valid pe un JWT nou, fără parolă. Tokenul
+     * primit este consumat, deci fiecare valoare funcționează o singură dată.
+     *
+     * <p>Nu este `@Transactional`: rotația commit-uiește înainte ca un token
+     * refolosit să producă eroare, altfel anularea sesiunilor s-ar pierde.
      */
+    public AuthResponse refresh(RefreshTokenRequest request, String clientIp) {
+        rateLimitService.check("refresh-ip:" + ipKey(clientIp));
+        RefreshTokenService.Rotation rotation = refreshTokens.rotate(request.refreshToken());
+        if (rotation.compromised()) {
+            throw RefreshTokenService.invalidToken();
+        }
+        User user = userRepository.findById(rotation.userId())
+                .filter(candidate -> !candidate.isDeleted())
+                .orElseThrow(RefreshTokenService::invalidToken);
+        return response(user, rotation.issued());
+    }
+
+    /**
+     * Închide sesiunea din care vine tokenul de refresh.
+     */
+    @Transactional
+    public void logout(RefreshTokenRequest request) {
+        refreshTokens.revoke(request.refreshToken());
+    }
+
+    /**
+     * Construiește răspunsul de autentificare cu token, token de refresh și profil.
+     */
+    @Transactional
     public AuthResponse issueToken(User user) {
+        return response(user, refreshTokens.issue(user.getId()));
+    }
+
+    /**
+     * Împachetează tokenurile emise și profilul curent al utilizatorului.
+     */
+    private AuthResponse response(User user, RefreshTokenService.Issued refresh) {
         JwtService.Token token = jwtService.issue(user);
         return new AuthResponse(token.value(), token.expiresAt(),
+                refresh.value(), refresh.expiresAt(),
                 UserResponse.from(user, Instant.now()));
     }
 

@@ -1,4 +1,4 @@
-# ToonMint
+#  how to test ToonMint
 
 Aplicație photo-to-cartoon: utilizatorul încarcă o fotografie, alege un stil, iar serverul
 generează o versiune cartoon/anime.

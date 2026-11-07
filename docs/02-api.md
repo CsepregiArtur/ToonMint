@@ -127,8 +127,9 @@ resetare valabil 15 minute.
 single-use, iar confirmarea lui marchează adresa ca verificată. `400 INVALID_CODE` la
 cod greșit/expirat.
 
-> Tokenurile JWT emise înainte de resetarea parolei rămân valide până la expirare
-> (24h) — proiectul folosește JWT stateless, fără revocare pe server.
+> Resetarea parolei revocă toate tokenurile de refresh ale contului, deci sesiunile
+> deschise pe alte dispozitive se închid la următoarea reînnoire. JWT-urile de acces
+> deja emise rămân valide până la expirare (24h), pentru că sunt stateless.
 
 ### `POST /api/auth/login`
 
@@ -138,6 +139,42 @@ cod greșit/expirat.
 
 `200 OK` cu `AuthResponse`. `401 INVALID_CREDENTIALS` la date greșite,
 `403 EMAIL_NOT_VERIFIED` dacă adresa nu a fost confirmată (detalii: `email`).
+
+`AuthResponse` conține două tokenuri: JWT-ul de acces (24h, trimis în
+`Authorization`) și tokenul de refresh (90 de zile), folosit ca sesiunea să nu expire.
+Fiecare login emite un token de refresh separat, deci dispozitivele au sesiuni
+independente.
+
+```json
+{
+  "token": "eyJhbGciOiJIUzI1NiJ9...",
+  "expiresAt": "2026-11-07T20:15:00Z",
+  "refreshToken": "8Kd3...Qm1c",
+  "refreshExpiresAt": "2027-02-04T20:15:00Z",
+  "user": { "id": 7, "email": "ana@example.com", "...": "..." }
+}
+```
+
+### `POST /api/auth/refresh`
+
+```json
+{ "refreshToken": "8Kd3...Qm1c" }
+```
+
+`200 OK` cu un `AuthResponse` nou. Tokenul primit este **consumat**: fiecare valoare
+funcționează o singură dată, iar serverul emite altul. Refolosirea unui token deja
+consumat este tratată ca o copiere a lui și închide toate sesiunile contului.
+`401 INVALID_REFRESH_TOKEN` pentru token necunoscut, expirat sau revocat.
+
+### `POST /api/auth/logout`
+
+```json
+{ "refreshToken": "8Kd3...Qm1c" }
+```
+
+`204 No Content`. Anulează tokenul de refresh primit; un JWT de acces deja emis rămâne
+valid până la expirare. Tokenul necunoscut nu produce eroare — rezultatul cerut
+(sesiunea nu mai există) este deja îndeplinit.
 
 ### Login demo (doar în dezvoltare)
 
@@ -348,7 +385,11 @@ Returnează `JobResponse`. Stări posibile: `PENDING`, `PROCESSING`, `COMPLETED`
 ### `GET /api/jobs/{id}` – reconectare
 
 Dacă conexiunea clientului cade, jobul continuă pe server. Clientul reinteroghează
-`GET /api/jobs/{id}`; frontend-ul face polling automat până la `COMPLETED`/`FAILED`.
+`GET /api/jobs/{id}`; frontend-ul face polling automat până la `COMPLETED`/`FAILED`,
+cu o fereastră de 5 minute. Dacă jobul încă rulează la expirare, lista este
+reîncărcată și starea reală rămâne vizibilă în UI (clientul nu mai raportează eșec).
+Serverul închide job-urile abandonate (vezi `JobRecoveryService`), deci polling-ul
+ajunge întotdeauna într-o stare finală.
 
 ### `POST /api/jobs/{id}/retry`
 

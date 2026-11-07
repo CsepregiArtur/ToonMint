@@ -50,7 +50,11 @@ springdoc:
 app:
   jwt:
     secret: ${JWT_SECRET:dev-only-secret-change-me-please-0123456789}
+    # Tokenul de acces: scurt, pentru că poate fi reînnoit fără relogin.
     ttl: PT24H
+    # Tokenul de refresh: cât timp rămâne utilizatorul autentificat fără parolă.
+    # 90 de zile acoperă o aplicație folosită zilnic; fiecare refresh îl reînnoiește.
+    refresh-ttl: P90D
   legal:
     # Versiunea documentelor legale. Trebuie să corespundă cu cea folosită la
     # build-ul frontendului (`LEGAL_TERMS_VERSION` din .env, citit de vite.config.js).
@@ -62,6 +66,13 @@ app:
     credits-per-job: 1
     max-input-bytes: 10485760
     max-output-dimension: 1024
+    # Repară job-urile rămase fără worker (vezi JobRecoveryService): le reia dacă
+    # poza mai e în cache, altfel le marchează FAILED cu rambursare. Se oprește
+    # doar dacă rulează mai multe instanțe pe aceeași bază și fiecare are workers.
+    recovery-enabled: ${JOB_RECOVERY_ENABLED:true}
+    # Un job rămas în PROCESSING mai mult de atât e considerat abandonat. Trebuie
+    # să fie peste durata maximă a unei generări (5 încercări x timeout-ul AI).
+    max-processing: ${JOB_MAX_PROCESSING:PT10M}
     # Prefixul public al imaginilor de exemplu (servite de frontend).
     style-preview-base-url: ${STYLE_PREVIEW_BASE_URL:/demo/styles}
     # Unde se scriu exemplele generate de Gemini și fotografia sursă folosită pentru ele.

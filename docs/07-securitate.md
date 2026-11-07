@@ -6,6 +6,8 @@
 |---|---|
 | Autentificare | JWT HS256, semnat cu `app.jwt.secret` (minim 32 bytes, verificat la start) |
 | Durată token | 24h (`app.jwt.ttl`) |
+| Token de refresh | `app.jwt.refresh-ttl` (90 zile), aleator de 256 biți, stocat doar ca SHA-256 în `refresh_tokens` |
+| Rotația tokenului | fiecare refresh consumă tokenul și emite altul; refolosirea unui token consumat închide toate sesiunile contului |
 | Parole | BCrypt (`PasswordEncoder`) |
 | Sesiuni | stateless — filtrul JWT populează `SecurityContext` la fiecare cerere |
 | Roluri | `USER`, `ADMIN`; `@EnableMethodSecurity` disponibil pentru reguli viitoare |
@@ -113,9 +115,13 @@ Autorizarea la nivel de obiect este explicită în servicii:
 
 ## 7. Limitări cunoscute și pași următori
 
-- Tokenurile nu au revocare individuală (logout = ștergerea tokenului din client).
-  Resetarea parolei **nu** invalidează JWT-urile deja emise: ele rămân valide până la
-  expirare (24h). Pentru revocare, introdu o versiune de token per utilizator.
+- JWT-urile de acces nu au revocare individuală: logout-ul și resetarea parolei anulează
+  tokenul de refresh, dar un JWT deja emis rămâne valid până la expirare (24h). Pentru
+  revocare imediată ar fi nevoie de o versiune de token per utilizator, verificată în
+  filtrul JWT — cost: o citire per cerere.
+- Tokenul de refresh stă în `localStorage`, ca și tokenul de acces. Într-un XSS el poate
+  fi citit; rotația și detectarea refolosirii limitează fereastra, dar mutarea în cookie
+  `HttpOnly` (sau în Keychain/Keystore pe mobil) ar închide complet problema.
 - `POST /api/auth/login` nu are limitare separată pe IP (există doar rate limiting pe
   cont la generare); recomandat un bucket pe IP pentru protecție la brute-force.
 - Codurile OTP sunt protejate prin expirare (15 min), 5 încercări și cooldown de 60s,
