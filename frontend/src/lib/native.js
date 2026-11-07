@@ -14,6 +14,14 @@ export function nativePlatform() {
   return Capacitor.getPlatform()
 }
 
+// Stub pentru dezvoltare locală: fără conturi în magazine și fără chei RevenueCat,
+// cumpărările sunt simulate ca fluxul din UI să poată fi parcurs în simulator/emulator.
+// Se activează doar explicit, cu `VITE_NATIVE_PURCHASE_STUB=true` la build — niciodată
+// într-un build de magazin, pentru că nu acordă credite (acelea vin doar prin webhook).
+export function isPurchaseStubbed() {
+  return String(import.meta.env.VITE_NATIVE_PURCHASE_STUB ?? '').toLowerCase() === 'true'
+}
+
 // Cheia publică RevenueCat a platformei (nu este secret: ajunge în bundle oricum).
 function purchasesApiKey() {
   return nativePlatform() === 'ios'
@@ -36,6 +44,9 @@ export async function configurePurchases(appUserId) {
   if (!isNative() || !appUserId) {
     return false
   }
+  if (isPurchaseStubbed()) {
+    return true
+  }
   const apiKey = purchasesApiKey()
   if (!apiKey) {
     throw new Error('RevenueCat API key is not configured for this platform')
@@ -53,6 +64,10 @@ export async function configurePurchases(appUserId) {
 export async function hasEntitlement(entitlementId = 'pro') {
   if (!isNative()) {
     return false
+  }
+  if (isPurchaseStubbed()) {
+    // Abonament considerat activ, ca ambele fluxuri (plan și pachet) să fie testabile.
+    return true
   }
   const Purchases = await purchasesSdk()
   const { customerInfo } = await Purchases.getCustomerInfo()
@@ -84,6 +99,13 @@ function isCancellation(error) {
 // `requireSubscription` reproduce regula din backend: pachetele de credite sunt
 // doar un supliment pentru abonați, iar în IAP verificarea nu trece prin server.
 export async function purchaseProduct(productId, { entitlementId = 'pro', requireSubscription = false } = {}) {
+  if (isPurchaseStubbed()) {
+    console.warn(
+      `[ToonMint] Purchase of ${productId} simulated (VITE_NATIVE_PURCHASE_STUB). ` +
+        'No credits will be granted: they come only from the RevenueCat webhook.'
+    )
+    return { cancelled: false, simulated: true, customerInfo: null }
+  }
   const Purchases = await purchasesSdk()
   const target = await findPackage(productId)
   if (!target) {
@@ -105,6 +127,10 @@ export async function purchaseProduct(productId, { entitlementId = 'pro', requir
 
 // Reia cumpărările anterioare (cerut de App Store pentru abonamente).
 export async function restorePurchases() {
+  if (isPurchaseStubbed()) {
+    console.warn('[ToonMint] Restore purchases simulated (VITE_NATIVE_PURCHASE_STUB)')
+    return null
+  }
   const Purchases = await purchasesSdk()
   const { customerInfo } = await Purchases.restorePurchases()
   return customerInfo

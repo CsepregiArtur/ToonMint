@@ -67,6 +67,11 @@ Puncte importante:
 4. **Eșec = rambursare** — dacă providerul AI eșuează definitiv, jobul devine `FAILED`,
    se creează o tranzacție `REFUND` (o singură dată, verificat prin
    `reference_job_id` + `type`), iar soldul revine.
+5. **Niciun job nu rămâne orfan** — `JobRecoveryService` rulează la pornire și apoi
+   la fiecare minut: job-urile `PENDING` nepreluate și cele `PROCESSING` mai vechi de
+   `app.jobs.max-processing` sunt reluate dacă poza sursă mai există în cache, altfel
+   devin `FAILED` cu rambursare. Fără asta, un restart în timpul generării ar lăsa
+   jobul veșnic `PROCESSING`, iar clientul și-ar epuiza polling-ul.
 
 ## 3b. Fluxul generării gratuite
 

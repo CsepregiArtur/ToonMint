@@ -30,9 +30,10 @@ public record AppProperties(
 ) {
 
     /**
-     * Configurația tokenului JWT: secretul de semnare și durata de valabilitate.
+     * Configurația tokenului JWT: secretul de semnare, durata de valabilitate a
+     * tokenului de acces și durata tokenului de refresh.
      */
-    public record Jwt(String secret, Duration ttl) {
+    public record Jwt(String secret, Duration ttl, Duration refreshTtl) {
     }
 
     /**
@@ -56,6 +57,8 @@ public record AppProperties(
                        int creditsPerJob,
                        long maxInputBytes,
                        int maxOutputDimension,
+                       boolean recoveryEnabled,
+                       Duration maxProcessing,
                        String stylePreviewBaseUrl,
                        String stylePreviewOutputDir,
                        String stylePreviewSource,

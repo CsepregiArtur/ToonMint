@@ -328,6 +328,7 @@ export const DOCUMENTS = {
             ['Nume', 'Tip', 'Scop', 'Durată'],
             [
               ['`toonmint.token`', 'localStorage', 'păstrează sesiunea ta autentificată (JWT)', '24 de ore'],
+              ['`toonmint.refreshToken`', 'localStorage', 'reînnoiește sesiunea fără parolă (inclusiv în aplicația mobilă)', '90 de zile'],
               ['`toonmint.consent.v1`', 'localStorage', 'reține opțiunile tale de cookie-uri', '6 luni'],
               ['cookie-uri de sesiune ale găzduirii', 'cookie', 'rutare către server, echilibrare, protecție anti-abuz', 'sesiune']
             ]

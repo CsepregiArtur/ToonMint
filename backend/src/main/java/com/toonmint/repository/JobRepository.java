@@ -40,6 +40,19 @@ public interface JobRepository extends JpaRepository<Job, Long> {
     Optional<Job> findWithUserById(@Param("id") Long id);
 
     /**
+     * Job-urile cu un status care au fost create înainte de un moment dat.
+     * Folosit la recuperarea job-urilor rămase fără worker (vezi JobRecoveryService).
+     */
+    @EntityGraph(attributePaths = "user")
+    List<Job> findByStatusAndCreatedAtBefore(JobStatus status, Instant createdAt);
+
+    /**
+     * Job-urile cu un status care au început procesarea înainte de un moment dat.
+     */
+    @EntityGraph(attributePaths = "user")
+    List<Job> findByStatusAndStartedAtBefore(JobStatus status, Instant startedAt);
+
+    /**
      * Custom query: job-urile unui utilizator filtrate după status, cele mai noi primele.
      */
     @EntityGraph(attributePaths = "user")

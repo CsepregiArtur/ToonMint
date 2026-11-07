@@ -8,6 +8,7 @@ import com.toonmint.repository.CreditTransactionRepository;
 import com.toonmint.repository.GuestTrialRepository;
 import com.toonmint.repository.JobRepository;
 import com.toonmint.repository.PurchaseAcknowledgementRepository;
+import com.toonmint.repository.RefreshTokenRepository;
 import com.toonmint.repository.UserRepository;
 import com.toonmint.repository.VerificationCodeRepository;
 import com.toonmint.security.AuthenticatedUser;
@@ -40,6 +41,7 @@ public class AccountService {
     private final VerificationCodeRepository verificationCodeRepository;
     private final GuestTrialRepository guestTrialRepository;
     private final PurchaseAcknowledgementRepository acknowledgementRepository;
+    private final RefreshTokenRepository refreshTokenRepository;
     private final PasswordEncoder passwordEncoder;
 
     public AccountService(UserRepository userRepository,
@@ -48,6 +50,7 @@ public class AccountService {
                           VerificationCodeRepository verificationCodeRepository,
                           GuestTrialRepository guestTrialRepository,
                           PurchaseAcknowledgementRepository acknowledgementRepository,
+                          RefreshTokenRepository refreshTokenRepository,
                           PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
         this.jobRepository = jobRepository;
@@ -55,6 +58,7 @@ public class AccountService {
         this.verificationCodeRepository = verificationCodeRepository;
         this.guestTrialRepository = guestTrialRepository;
         this.acknowledgementRepository = acknowledgementRepository;
+        this.refreshTokenRepository = refreshTokenRepository;
         this.passwordEncoder = passwordEncoder;
     }
 
@@ -135,6 +139,8 @@ public class AccountService {
         guestTrialRepository.deleteByEmail(user.getEmail());
 
         verificationCodeRepository.deleteByUserId(user.getId());
+        // Contul nu mai există: nicio sesiune (web sau mobilă) nu mai are voie să trăiască.
+        refreshTokenRepository.deleteByUserId(user.getId());
 
         // Tranzacțiile rămân (obligație contabilă), dar fără referință către joburi.
         creditTransactionRepository.clearJobReferences(user.getId());

@@ -16,6 +16,7 @@ app:
   jwt:
     secret: test-secret-test-secret-test-secret-0123456789
     ttl: PT1H
+    refresh-ttl: P30D
   jobs:
     threads: 1
     max-output-dimension: 512

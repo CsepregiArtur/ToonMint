@@ -57,7 +57,9 @@ Pentru ca aplicația să ajungă la server, build-ul mobil are nevoie de
 `VITE_API_BASE_URL=https://toonmint.cs-hub.xyz/api` în `frontend/.env` — altfel
 `/api` ar fi relativ la `capacitor://localhost`. Linia rămâne comentată pentru
 build-ul web, unde `/api` trebuie să rămână relativ. Cumpărările cer în plus
-`VITE_REVENUECAT_IOS_API_KEY` / `VITE_REVENUECAT_ANDROID_API_KEY`.
+`VITE_REVENUECAT_IOS_API_KEY` / `VITE_REVENUECAT_ANDROID_API_KEY` (sau cheia comună de
+Test Store, `test_…`, folosită doar în build-uri Debug — vezi
+[13 – Aplicații mobile](13-mobil-ios-android.md#32-revenuecat-proiectul-existent-d6c976c5)).
 
 `ios/App/App/public/` și `android/app/src/main/assets/public/` sunt generate (ignorate
 de git), deci după clonare se rulează întâi `npm run build` și apoi `npx cap sync`.
@@ -295,7 +297,8 @@ Dacă `mvn test` semnalează `class path resource [...] cannot be opened`, rulea
 
 | Simptom | Cauză probabilă | Verificare |
 |---|---|---|
-| jobul rămâne `PENDING` | worker-ul nu a pornit | log `Job N completed/failed`; verifică `app.jobs.threads > 0` |
+| jobul rămâne `PENDING` | worker-ul nu a pornit | log `Job N completed/failed`; verifică `app.jobs.threads > 0`; recuperarea îl preia în ~2 minute |
+| „Jobul încă se procesează pe server” | generarea depășește fereastra de polling a clientului (5 minute) | log `Job N completed/failed`; `GET /api/jobs/{id}`; `app.ai.max-attempts` × `app.ai.timeout` |
 | `402 INSUFFICIENT_CREDITS` neașteptat | sold 0 după un consum anterior | `GET /api/users/me`, apoi `GET /api/credits/transactions` |
 | `410 IMAGE_EXPIRED` la download | au trecut peste 10 minute de la generare | setează `app.temp-store.ttl` mai mare sau regenerează |
 | `429 RATE_LIMIT_EXCEEDED` | peste 10 cereri/minut | vezi `Retry-After`; crește `RATE_LIMIT_REQUESTS_PER_MINUTE` |

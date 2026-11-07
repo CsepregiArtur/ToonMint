@@ -319,6 +319,7 @@ export const DOCUMENTS_EN = {
             ['Name', 'Type', 'Purpose', 'Duration'],
             [
               ['`toonmint.token`', 'localStorage', 'keeps your session signed in (JWT)', '24 hours'],
+              ['`toonmint.refreshToken`', 'localStorage', 'renews the session without a password (mobile app included)', '90 days'],
               ['`toonmint.consent.v1`', 'localStorage', 'remembers your cookie choices', '6 months'],
               ['`toonmint.locale`', 'localStorage', 'remembers your language', 'until you change it'],
               ['hosting session cookies', 'cookie', 'routing to the server, load balancing, anti-abuse', 'session']

@@ -35,16 +35,22 @@ singurele lucruri care **nu** există în web și sunt obligatorii în magazine 
 | Permisiuni cameră/fotografii în `Info.plist` | ✅ | `NSCameraUsageDescription`, `NSPhotoLibrary*` |
 | Build iOS pentru simulator | ✅ | `xcodebuild … -sdk iphonesimulator` → **BUILD SUCCEEDED** |
 | CORS pentru originile native pe producție | ✅ | `OPTIONS` → `Access-Control-Allow-Origin: capacitor://localhost` |
+| Sesiune lungă: `/api/auth/refresh` + `/api/auth/logout`, rotație și detecție de refolosire | ✅ | [`AuthController.java`](../backend/src/main/java/com/toonmint/web/AuthController.java), [`RefreshTokenService.java`](../backend/src/main/java/com/toonmint/service/RefreshTokenService.java), [`client.js`](../frontend/src/api/client.js) |
+| Build nativ cu verificare de mediu (`VITE_API_BASE_URL`, chei RevenueCat) | ✅ | `npm run build:native` / `sync:ios` / `sync:android`, [`check-native-env.mjs`](../frontend/scripts/check-native-env.mjs) |
 | Proiect Android generat (Gradle 8.14.3, compileSdk 36) | ✅ | `frontend/android/` |
+| Build Android debug cu JDK 21 | ✅ | `JAVA_HOME=/opt/homebrew/opt/openjdk@21/... ./gradlew assembleDebug` → **BUILD SUCCESSFUL** |
+| Stub de cumpărare pentru dezvoltare locală (fără magazine) | ✅ | `VITE_NATIVE_PURCHASE_STUB=true` → [`native.js`](../frontend/src/lib/native.js) |
+| Rulare în simulator iOS (27.2, iPhone 18 Pro) | ✅ | aplicația pornește și randează landing page-ul, header-ul și bannerul de cookies |
 | Permisiuni cameră/galerie în `AndroidManifest.xml` | ✅ | `CAMERA`, `READ_MEDIA_IMAGES`, `READ_EXTERNAL_STORAGE` (≤ 32) |
-| Build Android debug (APK) | ✅ | `./gradlew assembleDebug` → **BUILD SUCCESSFUL**, APK 14 MB |
+| Build Android debug (APK) | ✅ | `./gradlew assembleDebug` → **BUILD SUCCESSFUL**, APK 14 MB (necesită JDK 21, vezi §6) |
 | Produse în App Store Connect / Play Console | ⛔ | necesită conturile de dezvoltator |
 | Rulare pe simulator/emulator | ⛔ | nu există runtime iOS instalat și nici imagine de sistem Android |
 
 Ce lipsește ca aplicația să funcționeze cap-coadă: cheile publice RevenueCat
-(`VITE_REVENUECAT_IOS_API_KEY`), produsele create în magazine și build-ul cu
-`VITE_API_BASE_URL`. Fără ele aplicația pornește și se autentifică, dar cumpărările
-eșuează cu „RevenueCat API key is not configured for this platform”.
+(`VITE_REVENUECAT_IOS_API_KEY` / `VITE_REVENUECAT_ANDROID_API_KEY`) și produsele create
+în magazine. Ambele se completează în `frontend/.env.native.local` (vezi
+`.env.native.example`); `npm run build:native` refuză să compileze cât timp lipsesc,
+ca să nu ajungă în magazin un bundle care eșuează la cumpărare.
 
 ## 2. Constrângerea care dictează totul: IAP
 
@@ -123,13 +129,29 @@ Dacă `xcodebuild -runFirstLaunch` semnalează licența neacceptată:
    abonamente (deja există pentru web).
 4. Cheile publice (SDK keys) pentru iOS și Android — intră în configul aplicației, nu
    în backend. Cheia secretă rămâne doar pe server.
+5. Pentru dezvoltare **nu** sunt necesare conturi în magazine: fiecare proiect are un
+   **Test Store** (Apps and providers → *Test configuration*), cu o cheie publică
+   `test_…` — aceeași pe ambele platforme. Produsele de test se creează în
+   *Product catalog → Products*, cu exact identificatorii din tabelul de mai sus, apoi
+   se atașează la offering-ul `default`; entitlement-ul rămâne `pro`. Cumpărările trec
+   prin SDK ca cele reale (`CustomerInfo`, entitlement), doar că în loc de fereastra
+   magazinului apare un modal cu „succes / eșec / anulare”. SDK-ul refuză însă să
+   pornească într-un build **Release** configurat cu o cheie `test_…`, deci cheia se
+   folosește exclusiv în build-uri Debug. Cheia se poate pune în `.env.native.local` cu
+   `node scripts/fetch-test-store-key.mjs test_… --write`; dacă nu o ai la îndemână, o
+   citește din API v2 cu o cheie secretă de citire (Project settings → API keys →
+   Secret API keys, **API Version 2**): `REVENUECAT_SECRET_API_KEY=sk_…
+   node scripts/fetch-test-store-key.mjs --write`. Fără `--write` doar o afișează.
+   Cheile de API v1 nu pot citi chei publice — v1 nu are endpoint-uri pentru aplicații.
+   Crearea Test Store-ului rămâne manuală: API-ul v2 nu are `test_store` între tipurile
+   de aplicație.
 
 ### 3.3 Modificări de cod partajate
 
 | # | Fișier | Schimbare |
 |---|---|---|
-| 1 | [`frontend/src/api/client.js`](../frontend/src/api/client.js) | `baseURL` din `import.meta.env.VITE_API_BASE_URL || '/api'` — în WebView `/api` este relativ la `capacitor://localhost`, deci nu ajunge la server. |
-| 2 | `frontend/.env` (documentat în `.env.example`) | `VITE_API_BASE_URL=https://toonmint.cs-hub.xyz/api` pentru build-urile mobile. |
+| 1 | [`frontend/src/api/client.js`](../frontend/src/api/client.js) | `baseURL` din `import.meta.env.VITE_API_BASE_URL || '/api'` — în WebView `/api` este relativ la `capacitor://localhost`, deci nu ajunge la server. Reînnoiește sesiunea o singură dată la `401` și reia cererea. |
+| 2 | `frontend/.env.native.local` (șablon în `.env.native.example`) | `VITE_API_BASE_URL=https://toonmint.cs-hub.xyz/api` + cheile RevenueCat, încărcate doar de `vite build --mode native`, ca web-ul să rămână cu `/api` relativ. |
 | 3 | `frontend/package.json` | `@capacitor/core@8.6.0`, `@capacitor/cli@8.6.0`, `@capacitor/ios@8.6.0`, `@capacitor/android@8.6.0`, `@capacitor/camera`, `@capacitor/preferences`, `@capacitor/app`, `@capacitor/status-bar`, `@capacitor/splash-screen`, `@revenuecat/purchases-capacitor@14`. Toate la majorul 8 — un plugin pe alt major rupe sync-ul. |
 | 4 | `frontend/capacitor.config.json` (nou) | `webDir: "dist"`, `appId`, `appName: "ToonMint"`, `android.scheme: https`, `server.hostname: localhost`. |
 | 5 | `frontend/src/lib/native.js` (nou) | `isNative()`, `takePhoto()` (cameră/galerie → base64), `purchasePackage()`, `restorePurchases()`, `hasEntitlement('pro')`. |
@@ -139,22 +161,75 @@ Dacă `xcodebuild -runFirstLaunch` semnalează licența neacceptată:
 | 9 | [`frontend/src/stores/auth.js`](../frontend/src/stores/auth.js) | **Nu se migrează.** `localStorage` persistă între lansări în WKWebView / Android WebView; mutarea în `@capacitor/preferences` ar cere inițializare asincronă în `state` și ar atinge toate fluxurile de auth, fără beneficiu dovedit. |
 | 10 | `backend` env pe server | `CORS_ALLOWED_ORIGINS` += `capacitor://localhost`, `http://localhost`, `https://localhost` ([SecurityConfig](../backend/src/main/java/com/toonmint/config/SecurityConfig.java:88) respinge originile necunoscute). **Aplicat pe producție** și verificat cu `OPTIONS` din ambele origini. |
 
-### 3.4 Sesiunea: azi expiră în 24 de ore
+### 3.4 Sesiunea: rezolvată prin token de refresh
 
-`app.jwt.ttl: PT24H` ([application.yml](../backend/src/main/resources/application.yml:52)) este
-acceptabil pentru web (relogin rar), dar inacceptabil pentru o aplicație: utilizatorul
-ar fi delogat zilnic. Înainte de Faza 1 se alege una dintre variante:
+`app.jwt.ttl: PT24H` ar deloga utilizatorul zilnic, inacceptabil pentru o aplicație.
+S-a implementat varianta recomandată:
 
-- **Recomandat:** `POST /api/auth/refresh` (token de refresh pe termen lung, stocat în
-  Keychain/Keystore) — munca este în backend + `auth.js`.
-- Minimal: TTL mai mare (ex. 90 de zile) doar pentru clienții mobili, identificați prin
-  header — mai simplu, mai puțin sigur.
+- `POST /api/auth/refresh` — schimbă tokenul de refresh pe un JWT nou;
+- `POST /api/auth/logout` — anulează tokenul de refresh al sesiunii;
+- tokenul de refresh (`app.jwt.refresh-ttl: P90D`) este aleator de 256 biți, stocat doar
+  ca SHA-256 în tabela `refresh_tokens` ([V6__refresh_tokens.sql](../backend/src/main/resources/db/migration/V6__refresh_tokens.sql));
+- rotație la fiecare folosire: tokenul primit este consumat, iar refolosirea unuia deja
+  consumat închide toate sesiunile contului (semnal de token copiat);
+- fiecare login emite un token separat, deci dispozitivele au sesiuni independente;
+- resetarea parolei și ștergerea contului anulează toate tokenurile.
+
+Clientul ([`client.js`](../frontend/src/api/client.js)) reînnoiește automat la `401` și
+la pornire ([`App.vue`](../frontend/src/App.vue)), deci utilizatorul nu vede ecranul de
+login cât timp tokenul de refresh e valid. Detalii de API în
+[02-api.md](02-api.md#post-apiauthrefresh).
 
 ### 3.5 Rate limiting și IP-ul partajat
 
 Limitele pe IP ([05-credite-si-rate-limiting.md](05-credite-si-rate-limiting.md)) se aplică
 și în mobil, unde mulți utilizatori împart IP-ul operatorului. Pentru trial-ul gratuit
 (1/adresă) cheia principală este emailul, deci riscul este mic; de urmărit la lansare.
+
+## 3.6 Rulare locală (fără conturi în magazine)
+
+Cele două comenzi de mai jos compilează frontendul în modul `native` și copiază
+rezultatul în proiectele native. Verifică mai întâi `.env.native.local` (șablon:
+`.env.native.example`); scriptul refuză build-ul dacă lipsește adresa API sau cheia
+platformei.
+
+```bash
+cd frontend
+npm run sync:ios       # build --mode native + cap sync ios
+npm run sync:android   # build --mode native + cap sync android
+```
+
+Apoi:
+
+```bash
+# iOS: simulator (Xcode trebuie să fie activ, §3.1.1)
+xcrun simctl boot "iPhone 18 Pro"
+open ios/App/App.xcodeproj     # Run din Xcode, sau:
+xcodebuild -project ios/App/App.xcodeproj -scheme App -sdk iphonesimulator \
+  -configuration Debug -destination 'platform=iOS Simulator,name=iPhone 18 Pro' \
+  CODE_SIGNING_ALLOWED=NO build
+
+# Android: emulator sau dispozitiv (JDK 21, vezi §6)
+cd android
+JAVA_HOME=/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home \
+  ./gradlew assembleDebug
+adb install -r app/build/outputs/apk/debug/app-debug.apk
+```
+
+**Cu cheia de Test Store** (recomandat în dezvoltare): pune aceeași valoare `test_…` în
+`VITE_REVENUECAT_IOS_API_KEY` și `VITE_REVENUECAT_ANDROID_API_KEY`, cu
+`VITE_NATIVE_PURCHASE_STUB=false`. Fluxul complet (plan, pachet, „necesită abonament”,
+Restore) trece prin SDK-ul RevenueCat și apare în dashboard ca trafic sandbox. Creditele
+se acordă tot prin webhook: integrarea trebuie să trimită și evenimente sandbox
+(`environment: SANDBOX`), altfel backendul nu vede cumpărările de test.
+
+**Fără chei RevenueCat** (dezvoltare locală): pune în `.env.native.local`
+`VITE_NATIVE_PURCHASE_STUB=true`. Cumpărările sunt atunci simulate — fluxul din UI
+(plan, pachet, „necesită abonament”, Restore) poate fi parcurs, dar **nu se acordă
+credite**, pentru că ele vin doar prin webhook-ul RevenueCat. Pentru generări reale
+în dezvoltare folosește contul demo (25 de credite). Stub-ul se activează exclusiv
+explicit: `npm run build:native` avertizează, iar un astfel de build nu are ce căuta
+în magazine.
 
 ## 4. Faza 1 — iOS
 
@@ -176,6 +251,14 @@ Limitele pe IP ([05-credite-si-rate-limiting.md](05-credite-si-rate-limiting.md)
 8. Test cu **Sandbox/StoreKit Testing** în Xcode: abonament → credite, pachet →
    respins fără abonament, pachet → 20 de credite cu abonament.
 9. TestFlight intern, apoi trimitere la review.
+
+#### Simptome frecvente în Xcode
+
+| Simptom | Cauză | Remediere |
+|---|---|---|
+| `Missing package product 'CapApp-SPM'` | `npx cap sync ios` rescrie `CapApp-SPM/Package.swift` (adaugă plugin-urile) cât timp Xcode are proiectul deschis, iar Xcode păstrează graful de pachete vechi în memorie. Nu e o eroare de proiect: `xcodebuild -resolvePackageDependencies -project App.xcodeproj -scheme App` rezolvă toate cele 11 pachete, iar build-ul din CLI trece. | Închide Xcode, `rm -rf ~/Library/Developer/Xcode/DerivedData/App-*`, redeschide proiectul (sau File → Packages → Reset Package Caches). Rulează `npm run sync:ios` **înainte** de a deschide Xcode. |
+| Ecran alb la prima rulare | WebView-ul are nevoie de ~6–7 s la primul launch după o resincronizare (pachete nou linkate + assets copiate); până atunci se vede `LaunchScreen`. | Așteaptă; verifică obiectiv cu `xcrun simctl io booted screenshot`. Dacă rămâne alb, rulează `npm run sync:ios` — `ios/App/App/public/index.html` poate indica un asset dintr-un `dist/` vechi. |
+| `Product … is not available in the current offering` | Produsele de test lipsesc din offering-ul curent. | Vezi §3.6: produsele Test Store cu identificatorii din `application.yml`, atașate la offering-ul `default`. |
 
 ### 4.2 Criterii de acceptare
 
@@ -225,10 +308,12 @@ rotirea ecranului nu pierde jobul în curs, notificarea de expirare a imaginii r
 | Respins la review pentru link de plată extern | blocant | Modul nativ ascunde complet linkurile `pay.rev.cat`; `grep` în bundle înainte de upload. |
 | Consumabil necumpărabil a doua oară | funcțional | `consumePurchase` după confirmarea webhook-ului. |
 | Produse cu alt ID în magazin | creditele nu se acordă | Verificare înainte de lansare: ID identic cu `application.yml`. |
-| Logout zilnic (JWT 24h) | UX | Refresh token (§3.4). |
+| Logout zilnic (JWT 24h) | UX | Rezolvat: token de refresh cu rotație (§3.4). |
 | Upload din cameră eșuează (HEIC) | funcțional | Camera plugin livrează JPEG/base64; backend acceptă PNG/JPEG/WEBP — de validat `.heic` respins corect cu `BAD_REQUEST`. |
 | `xcode-select` arată încă Command Line Tools | build iOS eșuează cu „requires Xcode” | `sudo xcode-select --switch /Applications/Xcode.app/Contents/Developer` (§3.1.1). |
 | Gradle pornește cu Java 27 de pe sistem | `Unsupported class file major version 71` | Instalat `openjdk@21` (Homebrew); build-ul se rulează cu `JAVA_HOME=/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home`. În Android Studio, *Gradle JDK* = **Embedded JDK (JBR 25)**. |
+| Plugin-ul `@capacitor/camera` cere toolchain Java **21** | `Cannot find a Java installation … matching: {languageVersion=21}` — build-ul eșuează și cu JBR 25, nu doar cu Java 27 | Toolchain-ul e fixat de plugin, deci din CLI se rulează cu `openjdk@21`; Gradle nu îl descarcă singur (nu are configurate repository-uri de toolchain-uri). |
+| VS Code („Gradle for Java”) importă și proiectele din `node_modules` | `CONFIGURE FAILED` pentru fiecare `@capacitor/*/android`, plus `Unsupported class file major version 69` pe `frontend/android`; explorer-ul Gradle rămâne gol | În `.vscode/settings.json` (e gitignorat, deci per mașină): `files.exclude` → `**/node_modules` (extensia descoperă proiectele cu `workspace.findFiles`, care respectă `files.exclude`, nu `search.exclude`) și `java.import.gradle.java.home` → `openjdk@21`. Plugin-urile Capacitor sunt subproiecte ale `frontend/android`, nu build-uri de sine stătătoare. |
 
 ## 7. Estimare
 
@@ -241,7 +326,6 @@ rotirea ecranului nu pierde jobul în curs, notificarea de expirare a imaginii r
 ## 8. Decizii deschise
 
 1. Bundle id / package: `xyz.cshub.toonmint` pentru ambele platforme (deja în config) — se confirmă înainte de înregistrarea în magazine.
-2. Refresh token (§3.4) sau TTL lung.
-3. Dacă pachetele de credite rămân disponibile în aplicație sau doar în web (Apple
+2. Dacă pachetele de credite rămân disponibile în aplicație sau doar în web (Apple
    permite ambele, dar top-up-urile în aplicație cresc complexitatea review-ului).
-4. Dacă se dorește și iPad/tabletă (afectează screenshot-urile și layout-ul).
+3. Dacă se dorește și iPad/tabletă (afectează screenshot-urile și layout-ul).

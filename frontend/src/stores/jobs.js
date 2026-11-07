@@ -66,18 +66,33 @@ export const useJobsStore = defineStore('jobs', {
     },
 
     // Reîmprospătează un singur job până când ajunge într-o stare finală (COMPLETED/FAILED).
-    async pollUntilFinished(jobId, timeoutMs = 120000) {
+    // Fereastra acoperă și cazul lent: serverul reîncearcă generarea de până la 5 ori,
+    // cu un timeout de 60s pe încercare, deci un job legitim poate depăși 2 minute.
+    async pollUntilFinished(jobId, timeoutMs = 300000) {
       const deadline = Date.now() + timeoutMs
+      let consecutiveErrors = 0
       while (Date.now() < deadline) {
-        const { data } = await http.get(`/jobs/${jobId}`)
-        this.replaceJob(data)
-        if (data.status === 'COMPLETED' || data.status === 'FAILED' || data.status === 'REMOVED') {
-          await useAuthStore().loadProfile()
-          return data
+        try {
+          const { data } = await http.get(`/jobs/${jobId}`)
+          consecutiveErrors = 0
+          this.replaceJob(data)
+          if (data.status === 'COMPLETED' || data.status === 'FAILED' || data.status === 'REMOVED') {
+            await useAuthStore().loadProfile()
+            return data
+          }
+        } catch (error) {
+          // Un request pierdut (rețea instabilă, redeploy) nu anulează așteptarea:
+          // jobul continuă pe server. Renunțăm doar la erori repetate.
+          consecutiveErrors += 1
+          if (consecutiveErrors >= 5) {
+            throw error
+          }
         }
         await new Promise((resolve) => setTimeout(resolve, 1500))
       }
-      throw new Error('Jobul nu s-a terminat în timpul alocat. Reîncarcă lista.')
+      // Jobul încă rulează: lista trebuie reîncărcată ca să arate starea reală.
+      await this.loadMine({ status: this.filterStatus })
+      throw new Error('Jobul încă se procesează pe server. Reîncarcă lista peste puțin timp.')
     },
 
     // Descarcă imaginea generată și o salvează local.

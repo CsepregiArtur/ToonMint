@@ -1,11 +1,18 @@
 import { defineStore } from 'pinia'
-import http from '../api/client'
+import http, {
+  accessTokenNeedsRefresh,
+  clearSession,
+  readAccessToken,
+  readRefreshToken,
+  refreshSession,
+  storeSession
+} from '../api/client'
 import { SITE } from '../legal/site'
 
 // Starea de autentificare: tokenul JWT, profilul curent și acțiunile de login/register/logout.
 export const useAuthStore = defineStore('auth', {
   state: () => ({
-    token: localStorage.getItem('toonmint.token') || '',
+    token: readAccessToken(),
     user: null,
     loading: false,
     error: ''
@@ -21,11 +28,30 @@ export const useAuthStore = defineStore('auth', {
   },
 
   actions: {
-    // Salvează tokenul primit de la server și profilul asociat.
+    // Salvează sesiunea primită de la server și profilul asociat.
     applySession(payload) {
       this.token = payload.token
       this.user = payload.user
-      localStorage.setItem('toonmint.token', payload.token)
+      storeSession(payload)
+    },
+
+    // Reia sesiunea la pornirea aplicației: reînnoiește JWT-ul dacă a expirat
+    // (normal după 24 de ore de la ultima folosire) și reîncarcă profilul.
+    async restoreSession() {
+      this.token = readAccessToken()
+      if (!this.token) {
+        return
+      }
+      if (accessTokenNeedsRefresh() && readRefreshToken()) {
+        try {
+          const session = await refreshSession()
+          this.token = session.token
+        } catch {
+          this.token = ''
+          return
+        }
+      }
+      await this.loadProfile()
     },
 
     // Autentifică utilizatorul cu email și parolă.
@@ -159,11 +185,17 @@ export const useAuthStore = defineStore('auth', {
       }
     },
 
-    // Șterge sesiunea locală.
+    // Închide sesiunea: anulează și tokenul de refresh de pe server.
     logout() {
+      const refreshToken = readRefreshToken()
+      if (refreshToken) {
+        // Fără `await`: ieșirea din cont trebuie să fie instantă, iar tokenul
+        // expiră oricum dacă cererea nu ajunge la server.
+        http.post('/auth/logout', { refreshToken }).catch(() => {})
+      }
       this.token = ''
       this.user = null
-      localStorage.removeItem('toonmint.token')
+      clearSession()
     }
   }
 })

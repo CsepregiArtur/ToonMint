@@ -6,6 +6,7 @@ import com.toonmint.web.dto.CodeSentResponse;
 import com.toonmint.web.dto.ForgotPasswordRequest;
 import com.toonmint.web.dto.LoginRequest;
 import com.toonmint.web.dto.PendingVerificationResponse;
+import com.toonmint.web.dto.RefreshTokenRequest;
 import com.toonmint.web.dto.RegisterRequest;
 import com.toonmint.web.dto.ResendVerificationRequest;
 import com.toonmint.web.dto.ResetPasswordRequest;
@@ -93,5 +94,25 @@ public class AuthController {
     @Operation(summary = "Exchange credentials for a JWT")
     public AuthResponse login(@Valid @RequestBody LoginRequest request, HttpServletRequest httpRequest) {
         return authService.login(request, ClientIp.of(httpRequest));
+    }
+
+    /**
+     * Reînnoiește sesiunea: consumă tokenul de refresh și întoarce un JWT nou.
+     */
+    @PostMapping("/refresh")
+    @Operation(summary = "Exchange a refresh token for a new JWT")
+    public AuthResponse refresh(@Valid @RequestBody RefreshTokenRequest request,
+                                HttpServletRequest httpRequest) {
+        return authService.refresh(request, ClientIp.of(httpRequest));
+    }
+
+    /**
+     * Închide sesiunea anulând tokenul de refresh.
+     */
+    @PostMapping("/logout")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @Operation(summary = "Revoke the refresh token of the current session")
+    public void logout(@Valid @RequestBody RefreshTokenRequest request) {
+        authService.logout(request);
     }
 }
