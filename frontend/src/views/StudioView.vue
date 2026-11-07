@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted } from 'vue'
+import { computed, onBeforeUnmount, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import JobUploader from '../components/JobUploader.vue'
 import JobList from '../components/JobList.vue'
@@ -13,6 +13,65 @@ const auth = useAuthStore()
 const route = useRoute()
 const firstVisit = computed(() => jobsStore.totalItems === 0)
 
+// Cât timp există joburi în lucru, lista se reîmprospătează singură, ca starea
+// să treacă în COMPLETED/FAILED fără ca utilizatorul să apese „Refresh”.
+const POLL_INTERVAL_MS = 3000
+// Limită de siguranță: nu ținem un tab deschis la nesfârșit în polling dacă
+// serverul nu mai răspunde cu o stare finală.
+const POLL_MAX_MS = 15 * 60 * 1000
+let pollTimer = null
+let pollDeadline = 0
+
+function stopPolling() {
+  if (pollTimer) {
+    clearInterval(pollTimer)
+    pollTimer = null
+  }
+}
+
+function startPolling() {
+  if (pollTimer) {
+    return
+  }
+  pollDeadline = Date.now() + POLL_MAX_MS
+  pollTimer = setInterval(async () => {
+    if (Date.now() > pollDeadline) {
+      stopPolling()
+      return
+    }
+    // Tab ascuns: nu consumăm cereri; la revenire reîmprospătăm imediat.
+    if (document.visibilityState === 'hidden') {
+      return
+    }
+    const hadActive = jobsStore.hasActiveJobs
+    await jobsStore.loadMine({ status: jobsStore.filterStatus, silent: true })
+    if (!jobsStore.hasActiveJobs) {
+      stopPolling()
+      // Un job terminat poate schimba creditele (rambursare la FAILED).
+      if (hadActive) {
+        await auth.loadProfile()
+      }
+    }
+  }, POLL_INTERVAL_MS)
+}
+
+// Pornește/oprește ciclul în funcție de ce e în listă.
+watch(
+  () => jobsStore.hasActiveJobs,
+  (active) => (active ? startPolling() : stopPolling())
+)
+
+// La revenirea în tab, reîmprospătăm imediat: cât timp era ascuns nu am cerut nimic.
+async function handleVisibility() {
+  if (document.visibilityState === 'visible' && jobsStore.hasActiveJobs) {
+    await jobsStore.loadMine({ status: jobsStore.filterStatus, silent: true })
+    if (!jobsStore.hasActiveJobs) {
+      stopPolling()
+      await auth.loadProfile()
+    }
+  }
+}
+
 // Reîmprospătează lista și profilul după ce un job nou a fost creat.
 async function handleCreated() {
   await Promise.all([jobsStore.loadMine({ status: jobsStore.filterStatus }), auth.loadProfile()])
@@ -20,8 +79,17 @@ async function handleCreated() {
 
 // Asigurăm datele proaspete la fiecare vizită.
 onMounted(async () => {
+  document.addEventListener('visibilitychange', handleVisibility)
   await auth.loadProfile()
   await jobsStore.loadMine()
+  if (jobsStore.hasActiveJobs) {
+    startPolling()
+  }
+})
+
+onBeforeUnmount(() => {
+  document.removeEventListener('visibilitychange', handleVisibility)
+  stopPolling()
 })
 </script>
 
