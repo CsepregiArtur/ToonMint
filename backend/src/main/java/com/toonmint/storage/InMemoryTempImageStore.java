@@ -3,13 +3,13 @@ package com.toonmint.storage;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.toonmint.config.AppProperties;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.stereotype.Component;
 
 import java.util.Optional;
 
-@Component
-@ConditionalOnProperty(name = "app.temp-store.backend", havingValue = "memory", matchIfMissing = true)
+/**
+ * Store temporar în heap, folosit când {@code app.temp-store.backend=memory}.
+ * Alegerea se face la runtime, în {@link TempImageStoreConfig}.
+ */
 public class InMemoryTempImageStore implements TempImageStore {
 
     private final Cache<String, StoredImage> cache;

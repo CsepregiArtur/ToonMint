@@ -8,7 +8,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,11 +16,13 @@ import java.util.Locale;
 
 /**
  * Creează conturile demo (utilizator + operator) la pornire, când
- * `app.demo.enabled=true`. Rulează doar în dezvoltare: profilul `prod` dezactivează
- * proprietatea, deci bean-ul nu există.
+ * `app.demo.enabled=true`.
+ *
+ * <p>Verificarea se face la runtime, nu prin {@code @ConditionalOnProperty}: Spring
+ * AOT evaluează condițiile la build, deci un seeder coapte în imaginea nativă ar
+ * rula și în producție, oricât de „oprit” ar fi flagul la pornire.
  */
 @Component
-@ConditionalOnProperty(name = "app.demo.enabled", havingValue = "true")
 public class DemoDataSeeder implements ApplicationRunner {
 
     private static final Logger log = LoggerFactory.getLogger(DemoDataSeeder.class);
@@ -43,6 +44,9 @@ public class DemoDataSeeder implements ApplicationRunner {
     @Transactional
     public void run(ApplicationArguments args) {
         AppProperties.Demo demo = properties.demo();
+        if (!demo.enabled()) {
+            return;
+        }
         seed(demo.userEmail(), demo.userPassword(), demo.userCredits(), UserRole.USER, "Demo user");
         seed(demo.adminEmail(), demo.adminPassword(), demo.adminCredits(), UserRole.ADMIN, "Demo operator");
         log.warn("Demo accounts are enabled (app.demo.enabled=true). "
